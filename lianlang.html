@@ -1971,21 +1971,31 @@
     if (!r.width) return;
     envW = r.width; envH = r.height;
     tearLine = envH * 0.40;
+    // 随机游走：每 14px 一个控制点，点与点之间平滑，才像真撕口
+    const n = Math.ceil(envW / 14) + 2;
     jag = [];
-    const n = Math.ceil(envW / 3) + 2;
-    const raw = [];
-    for (let i = 0; i < n; i++) raw.push(Math.random());
+    let v = 0;
     for (let i = 0; i < n; i++) {
-      const a = raw[i], b = raw[i - 1] ?? a, c = raw[i + 1] ?? a;
-      const smooth = (a * 2 + b + c) / 4;
-      const fine = Math.random() - 0.5;
-      jag.push((smooth - 0.5) * 8 + fine * 3);
+      v += (Math.random() - 0.5) * 1.7;
+      v = Math.max(-9, Math.min(9, v));
+      jag.push(v);
     }
   }
   function edgeY(x){
     if (!jag.length) return tearLine;
-    const i = Math.max(0, Math.min(jag.length - 1, Math.round(x / 3)));
-    return tearLine + jag[i];
+    const t = x / 14;
+    const i = Math.floor(t);
+    const f = t - i;
+    const a = jag[i] ?? 0, b = jag[i + 1] ?? a;
+    const s = f * f * (3 - 2 * f);
+    const v = a + (b - a) * s;
+    return tearLine + v + Math.sin(x * 0.6) * 0.7;
+  }
+  let paintQueued = false;
+  function schedulePaint(){
+    if (paintQueued) return;
+    paintQueued = true;
+    requestAnimationFrame(() => { paintQueued = false; paintTear(); });
   }
   function paintTear(){
     if (!envW) return;
@@ -2089,9 +2099,9 @@
     if (sign !== dir && progress > 0) return;
     const span = envW * 0.85;
     const before = progress;
-    progress = Math.max(0, Math.min(1, Math.abs(dx) / span));
+    progress = Math.round(Math.max(0, Math.min(1, Math.abs(dx) / span)) * 1000) / 1000;
     const speed = Math.min(1, Math.abs(progress - before) / (dt / 1000) / 3);
-    paintTear();
+    schedulePaint();
     S.tearSet(0.2 + Math.min(1, speed) * 0.8);
     if (now - lastGrain > 45) {
       lastGrain = now;
