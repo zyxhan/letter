@@ -4,6 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>连廊</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/lxgw-wenkai-webfont@1.7.0/lxgwwenkai-regular.css">
 <meta name="theme-color" content="#f1f1ef">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%23f1f1ef'/%3E%3Cpath d='M9 7v19M23 7v19M9 7h14' stroke='%231b1b1a' stroke-width='1.4' fill='none'/%3E%3C/svg%3E">
 <style>
@@ -12,7 +13,7 @@
     --line:rgba(49,44,38,.10); --accent:#9a7b52;
     --fs:18px; --w:36em; --lh:2.0;
     --font-serif:"Source Han Serif SC","Noto Serif SC","Songti SC",STSong,"SimSun",serif;
-    --font-kai:"KaiTi","STKaiti","Kaiti SC","楷体","Noto Serif CJK SC","Noto Serif SC","Source Han Serif SC","Songti SC",STSong,"SimSun",serif;
+    --font-kai:"LXGW WenKai","KaiTi","STKaiti","Kaiti SC","楷体","Noto Serif CJK SC","Noto Serif SC","Source Han Serif SC","Songti SC",STSong,"SimSun",serif;
     --font-sans:"Inter","Source Han Sans SC","Noto Sans SC","PingFang SC","Microsoft YaHei",sans-serif;
   }
   html[data-theme="night"]{
@@ -416,6 +417,22 @@
       url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='4'/%3E%3C/filter%3E%3Crect width='200' height='200' filter='url(%23n)' opacity='0.5'/%3E%3C/svg%3E");
   }
   html[data-theme="night"] #lst{ background-blend-mode:normal; }
+
+  /* 信封的几种样子 */
+  #lst.env-kraft{ --env:#d9bd92; --env2:#c8a776; --envline:rgba(88,58,24,.34); }
+  #lst.env-navy{
+    --env:#303b4d; --env2:#252f3e; --envline:rgba(240,235,220,.16);
+    --ink:#e9e3d6; --muted:#99a2b0;
+  }
+  #lst.env-navy .env-flap{ background:linear-gradient(178deg,#3a4658,var(--env2) 72%); }
+  #lst.env-navy .env-addr{ color:#e9e3d6; text-shadow:0 1px 0 rgba(0,0,0,.35); }
+  #lst.env-navy .env-back{ box-shadow:inset 0 0 0 1px var(--envline), inset 0 2px 0 rgba(255,255,255,.10), inset 0 -3px 8px rgba(0,0,0,.35); }
+
+  /* 信纸的几种样子 */
+  #lread.paper-cream .lsheet{ background-color:#fbf2df; }
+  #lread.paper-green .lsheet{ background-color:#edf1e6; }
+  html[data-theme="night"] #lread.paper-cream .lsheet{ background-color:#241f18; }
+  html[data-theme="night"] #lread.paper-green .lsheet{ background-color:#1c211c; }
   body.sending #lst{ display:flex; }
   .env{
     position:relative; width:min(88vw,560px); aspect-ratio:1.55/1;
@@ -1611,6 +1628,18 @@
   <input id="pTo" placeholder="小安" spellcheck="false">
   <label for="pFrom">落款</label>
   <input id="pFrom" placeholder="涵哥" spellcheck="false">
+  <label>信纸</label>
+  <div class="row" id="rowPaper" style="margin-bottom:14px">
+    <button class="chip" data-paper="plain">素白</button>
+    <button class="chip" data-paper="cream">米黄</button>
+    <button class="chip" data-paper="green">青笺</button>
+  </div>
+  <label>信封</label>
+  <div class="row" id="rowEnv" style="margin-bottom:14px">
+    <button class="chip" data-env="cream">米色</button>
+    <button class="chip" data-env="kraft">牛皮</button>
+    <button class="chip" data-env="navy">墨蓝</button>
+  </div>
   <div id="pLinkWrap" style="display:none">
     <label>链接</label>
     <textarea id="pLink" readonly spellcheck="false"></textarea>
@@ -1779,6 +1808,34 @@
     return JSON.parse(new TextDecoder().decode(buf));
   }
 
+  /* ---------- 纸和信封 ---------- */
+  let look = { p: "plain", e: "cream" };
+  try {
+    const saved = JSON.parse(localStorage.getItem("post.look") || "null");
+    if (saved && saved.p) look = saved;
+  } catch(e){}
+  function applyLook(){
+    const lst = $("#lst"), rd = $("#lread");
+    lst.classList.remove("env-kraft", "env-navy");
+    if (look.e === "kraft") lst.classList.add("env-kraft");
+    if (look.e === "navy") lst.classList.add("env-navy");
+    rd.classList.remove("paper-cream", "paper-green");
+    if (look.p === "cream") rd.classList.add("paper-cream");
+    if (look.p === "green") rd.classList.add("paper-green");
+    document.querySelectorAll("#rowPaper .chip").forEach(b =>
+      b.classList.toggle("on", b.dataset.paper === look.p));
+    document.querySelectorAll("#rowEnv .chip").forEach(b =>
+      b.classList.toggle("on", b.dataset.env === look.e));
+    try { localStorage.setItem("post.look", JSON.stringify(look)); } catch(e){}
+  }
+  document.querySelectorAll("#rowPaper .chip").forEach(b => {
+    b.onclick = () => { look.p = b.dataset.paper; applyLook(); };
+  });
+  document.querySelectorAll("#rowEnv .chip").forEach(b => {
+    b.onclick = () => { look.e = b.dataset.env; applyLook(); };
+  });
+  applyLook();
+
   /* ---------- 拆信 ---------- */
   const envBox = $("#envBox");
   function todayText(){
@@ -1790,6 +1847,10 @@
   }
   function queueLetter(data){
     letter = data;
+    if (data.p || data.e) {
+      look = { p: data.p || "plain", e: data.e || "cream" };
+      applyLook();
+    }
     $("#envTo").textContent = data.t || "你";
     const first = (data.b || "").split("\n").map(s => s.trim()).filter(Boolean).slice(0, 2);
     $("#envPaper").innerHTML = first.length
@@ -1880,7 +1941,9 @@
       t: $("#pTo").value.trim(),
       b: currentPiece().body,
       f: $("#pFrom").value.trim(),
-      d: todayText()
+      d: todayText(),
+      p: look.p,
+      e: look.e
     };
   }
   $("#pCancel").onclick = () => $("#postDlg").close();
