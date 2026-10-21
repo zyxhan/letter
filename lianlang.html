@@ -14,6 +14,7 @@
     --fs:18px; --w:36em; --lh:2.0;
     --font-serif:"Source Han Serif SC","Noto Serif SC","Songti SC",STSong,"SimSun",serif;
     --font-kai:"LXGW WenKai","KaiTi","STKaiti","Kaiti SC","楷体","Noto Serif CJK SC","Noto Serif SC","Source Han Serif SC","Songti SC",STSong,"SimSun",serif;
+    --font-letter:var(--font-kai);
     --font-sans:"Inter","Source Han Sans SC","Noto Sans SC","PingFang SC","Microsoft YaHei",sans-serif;
   }
   html[data-theme="night"]{
@@ -457,7 +458,7 @@
       0 12px 28px rgba(90,70,45,.18),
       inset 0 0 0 1px var(--envline);
     transition:transform .95s cubic-bezier(.22,.9,.25,1), opacity .5s ease;
-    font-family:var(--font-kai); font-size:13px; line-height:2.05; color:var(--muted);
+    font-family:var(--font-letter); font-size:13px; line-height:2.05; color:var(--muted);
   }
   .env-front{
     z-index:3; background:linear-gradient(163deg, var(--env) 0%, var(--env2) 100%);
@@ -513,7 +514,7 @@
   }
   .env-addr{
     position:absolute; left:0; right:0; bottom:13%; z-index:7; text-align:center;
-    font-family:var(--font-kai); font-size:clamp(16px,4.2vw,20px); letter-spacing:.16em;
+    font-family:var(--font-letter); font-size:clamp(16px,4.2vw,20px); letter-spacing:.16em;
     color:var(--ink); pointer-events:none; transition:opacity .5s ease;
     text-shadow:0 1px 0 rgba(255,255,255,.25);
   }
@@ -578,7 +579,7 @@
 
   .lsheet{
     position:relative; max-width:34em; margin:0 auto; min-height:100%;
-    background:var(--paper); font-family:var(--font-kai);
+    background:var(--paper); font-family:var(--font-letter);
     padding:clamp(44px,9vh,96px) clamp(24px,5.5vw,54px) 120px;
     box-shadow:0 2px 6px rgba(90,70,45,.10), 0 18px 60px rgba(90,70,45,.14);
     background-image:
@@ -1640,6 +1641,12 @@
     <button class="chip" data-env="kraft">牛皮</button>
     <button class="chip" data-env="navy">墨蓝</button>
   </div>
+  <label>字</label>
+  <div class="row" id="rowLFont" style="margin-bottom:14px">
+    <button class="chip" data-lfont="wenkai">文楷</button>
+    <button class="chip" data-lfont="yozai">悠哉</button>
+    <button class="chip" data-lfont="xiaokai">小楷</button>
+  </div>
   <div id="pLinkWrap" style="display:none">
     <label>链接</label>
     <textarea id="pLink" readonly spellcheck="false"></textarea>
@@ -1808,11 +1815,37 @@
     return JSON.parse(new TextDecoder().decode(buf));
   }
 
-  /* ---------- 纸和信封 ---------- */
-  let look = { p: "plain", e: "cream" };
+  /* ---------- 纸、信封、字 ---------- */
+  const LET_FONTS = {
+    wenkai:  { css: null, family: '"LXGW WenKai"' },
+    yozai:   { css: "https://cdn.jsdelivr.net/npm/cn-fontsource-yozai-regular@1.0.9/font.css", family: '"Yozai"' },
+    xiaokai: { css: "https://cdn.jsdelivr.net/npm/cn-fontsource-slideyouran-regular@1.0.3/font.css", family: '"slideyouran"' }
+  };
+  const loadedFonts = {};
+  function ensureFont(id){
+    const f = LET_FONTS[id] || LET_FONTS.wenkai;
+    if (!f.css || loadedFonts[id]) return Promise.resolve();
+    loadedFonts[id] = true;
+    return new Promise(res => {
+      const link = document.createElement("link");
+      link.rel = "stylesheet";
+      link.href = f.css;
+      link.onload = () => {
+        const fam = f.family.replace(/"/g, "");
+        if (document.fonts && document.fonts.load) {
+          document.fonts.load('16px "' + fam + '"', "一封").then(() => res(), () => res());
+        } else res();
+      };
+      link.onerror = () => res();
+      document.head.appendChild(link);
+      setTimeout(res, 2500);
+    });
+  }
+
+  let look = { p: "plain", e: "cream", k: "wenkai" };
   try {
     const saved = JSON.parse(localStorage.getItem("post.look") || "null");
-    if (saved && saved.p) look = saved;
+    if (saved && saved.p) look = Object.assign(look, saved);
   } catch(e){}
   function applyLook(){
     const lst = $("#lst"), rd = $("#lread");
@@ -1822,10 +1855,16 @@
     rd.classList.remove("paper-cream", "paper-green");
     if (look.p === "cream") rd.classList.add("paper-cream");
     if (look.p === "green") rd.classList.add("paper-green");
+    if (!LET_FONTS[look.k]) look.k = "wenkai";
+    ensureFont(look.k);
+    document.documentElement.style.setProperty(
+      "--font-letter", LET_FONTS[look.k].family + ',"KaiTi","STKaiti","Noto Serif CJK SC",serif');
     document.querySelectorAll("#rowPaper .chip").forEach(b =>
       b.classList.toggle("on", b.dataset.paper === look.p));
     document.querySelectorAll("#rowEnv .chip").forEach(b =>
       b.classList.toggle("on", b.dataset.env === look.e));
+    document.querySelectorAll("#rowLFont .chip").forEach(b =>
+      b.classList.toggle("on", b.dataset.lfont === look.k));
     try { localStorage.setItem("post.look", JSON.stringify(look)); } catch(e){}
   }
   document.querySelectorAll("#rowPaper .chip").forEach(b => {
@@ -1833,6 +1872,9 @@
   });
   document.querySelectorAll("#rowEnv .chip").forEach(b => {
     b.onclick = () => { look.e = b.dataset.env; applyLook(); };
+  });
+  document.querySelectorAll("#rowLFont .chip").forEach(b => {
+    b.onclick = () => { look.k = b.dataset.lfont; applyLook(); };
   });
   applyLook();
 
@@ -1847,8 +1889,8 @@
   }
   function queueLetter(data){
     letter = data;
-    if (data.p || data.e) {
-      look = { p: data.p || "plain", e: data.e || "cream" };
+    if (data.p || data.e || data.k) {
+      look = { p: data.p || "plain", e: data.e || "cream", k: data.k || "wenkai" };
       applyLook();
     }
     $("#envTo").textContent = data.t || "你";
@@ -1943,7 +1985,8 @@
       f: $("#pFrom").value.trim(),
       d: todayText(),
       p: look.p,
-      e: look.e
+      e: look.e,
+      k: look.k
     };
   }
   $("#pCancel").onclick = () => $("#postDlg").close();
