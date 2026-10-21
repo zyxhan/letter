@@ -1629,7 +1629,7 @@
     <div class="env-seal" id="envSeal">信</div>
     <div class="env-addr"><small>致</small><span id="envTo">你</span></div>
   </div>
-  <div class="lst-hint" id="lstHint">按住上沿，慢慢撕开</div>
+  <div class="lst-hint" id="lstHint">点开火漆，再撕开</div>
 </div>
 
 <div id="lread">
@@ -1960,6 +1960,7 @@
   const envFront = $("#envFront");
   let jag = [], envW = 0, envH = 0, tearLine = 0;
   let progress = 0, tearing = false, finished = false, dir = 1, startX = 0;
+  let sealed = true;
   let lastBuzz = 0, lastGrain = 0, lastMoveT = 0, lastSpeed = 0;
 
   function poly(pts){
@@ -2038,8 +2039,33 @@
     }, 1350);
     setTimeout(() => { busy = false; }, 1700);
   }
+  const sealEl = $("#envSeal");
+  function unseal(){
+    if (!sealed) return;
+    sealed = false;
+    S.crack();
+    buzz(14);
+    sealEl.classList.add("crack");
+    $("#lstHint").textContent = "按住上沿，慢慢撕开";
+    setTimeout(() => {
+      sealEl.style.opacity = "0";
+      sealEl.style.pointerEvents = "none";
+    }, 380);
+  }
+  sealEl.addEventListener("pointerdown", e => {
+    e.stopPropagation();
+    e.preventDefault();
+    unseal();
+  });
+
   function onDown(e){
     if (busy || finished || !letter) return;
+    if (sealed) {
+      const h = $("#lstHint");
+      h.textContent = "先把火漆取下来";
+      h.classList.remove("gone");
+      return;
+    }
     if (!envW) buildJag();
     tearing = true;
     dir = 1;
@@ -2100,6 +2126,9 @@
     envBox.classList.remove("torn", "pull", "read");
     $("#envSeal").classList.remove("crack");
     $("#envSeal").style.opacity = "";
+    $("#envSeal").style.pointerEvents = "";
+    sealed = true;
+    $("#lstHint").textContent = "点开火漆，再撕开";
     $("#lstHint").classList.remove("gone");
     $("#lsheet").innerHTML = "";
     progress = 0; finished = false; tearing = false; lastProgress = 0;
