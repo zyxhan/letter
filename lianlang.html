@@ -12,7 +12,7 @@
     --line:rgba(49,44,38,.10); --accent:#9a7b52;
     --fs:18px; --w:36em; --lh:2.0;
     --font-serif:"Source Han Serif SC","Noto Serif SC","Songti SC",STSong,"SimSun",serif;
-    --font-kai:"KaiTi","STKaiti","Kaiti SC","楷体",var(--font-serif);
+    --font-kai:"KaiTi","STKaiti","Kaiti SC","楷体","Noto Serif CJK SC","Noto Serif SC","Source Han Serif SC","Songti SC",STSong,"SimSun",serif;
     --font-sans:"Inter","Source Han Sans SC","Noto Sans SC","PingFang SC","Microsoft YaHei",sans-serif;
   }
   html[data-theme="night"]{
@@ -396,74 +396,111 @@
   #lst{
     position:fixed; inset:0; z-index:70; display:none;
     align-items:center; justify-content:center; flex-direction:column;
+    --bg:#d9cbae; --paper:#fdfaf1; --ink:#312b22; --muted:#8d7f68;
+    --line:rgba(90,68,40,.18);
+    --env:#efe3c7; --env2:#e3d4b4; --envline:rgba(110,84,48,.30);
     background:var(--bg);
     background-image:
-      radial-gradient(120% 80% at 50% 8%, rgba(255,248,232,.9), rgba(255,248,232,0) 60%),
-      radial-gradient(100% 70% at 50% 112%, rgba(70,52,32,.16), rgba(70,52,32,0) 70%);
+      radial-gradient(120% 78% at 50% 6%, rgba(255,247,226,.95), rgba(255,247,226,0) 58%),
+      radial-gradient(120% 80% at 50% 116%, rgba(58,40,20,.28), rgba(58,40,20,0) 72%),
+      url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='4'/%3E%3C/filter%3E%3Crect width='200' height='200' filter='url(%23n)' opacity='0.5'/%3E%3C/svg%3E");
     perspective:1500px;
   }
   html[data-theme="night"] #lst{
+    --bg:#171410; --paper:#211e19; --ink:#ded4c2; --muted:#7e7466;
+    --line:rgba(255,255,255,.10);
+    --env:#2b2620; --env2:#332d26; --envline:rgba(255,235,200,.14);
     background-image:
-      radial-gradient(120% 80% at 50% 8%, rgba(255,180,100,.10), rgba(255,180,100,0) 60%),
-      radial-gradient(100% 70% at 50% 112%, rgba(0,0,0,.5), rgba(0,0,0,0) 70%);
+      radial-gradient(110% 70% at 50% 6%, rgba(255,178,96,.12), rgba(255,178,96,0) 58%),
+      radial-gradient(120% 80% at 50% 116%, rgba(0,0,0,.6), rgba(0,0,0,0) 72%),
+      url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='4'/%3E%3C/filter%3E%3Crect width='200' height='200' filter='url(%23n)' opacity='0.5'/%3E%3C/svg%3E");
   }
+  html[data-theme="night"] #lst{ background-blend-mode:normal; }
   body.sending #lst{ display:flex; }
   .env{
     position:relative; width:min(88vw,560px); aspect-ratio:1.55/1;
-    filter:drop-shadow(0 20px 38px rgba(80,62,40,.26));
+    filter:
+      drop-shadow(0 2px 2px rgba(70,50,28,.22))
+      drop-shadow(0 18px 28px rgba(70,50,28,.26))
+      drop-shadow(0 46px 70px rgba(70,50,28,.22));
   }
   .env-back, .env-front, .env-flap{ position:absolute; inset:0; border-radius:2px; }
   .env-back{
-    background:var(--env);
-    box-shadow:inset 0 0 0 1px var(--envline);
+    background:linear-gradient(170deg, var(--env), var(--env2));
+    box-shadow:
+      inset 0 0 0 1px var(--envline),
+      inset 0 2px 0 rgba(255,255,255,.35),
+      inset 0 -3px 8px rgba(90,68,40,.10);
   }
   .env-paper{
     position:absolute; left:5%; bottom:8%; width:90%; height:88%; z-index:2;
     background:var(--paper); border-radius:1px; padding:18px 20px; overflow:hidden;
-    box-shadow:0 4px 14px rgba(90,70,45,.16), inset 0 0 0 1px var(--envline);
+    box-shadow:
+      0 2px 6px rgba(90,70,45,.22),
+      0 12px 28px rgba(90,70,45,.18),
+      inset 0 0 0 1px var(--envline);
     transition:transform .95s cubic-bezier(.22,.9,.25,1), opacity .5s ease;
     font-family:var(--font-kai); font-size:13px; line-height:2.05; color:var(--muted);
   }
   .env-front{
-    z-index:3; background:linear-gradient(160deg, var(--env), var(--env2));
+    z-index:3; background:linear-gradient(163deg, var(--env) 0%, var(--env2) 100%);
     clip-path:polygon(0 0,50% 46%,100% 0,100% 100%,0 100%);
-    box-shadow:inset 0 0 0 1px var(--envline);
+    filter:drop-shadow(0 -1px 0 var(--envline));
   }
   .env-flap{
     z-index:5; transform-origin:top center; backface-visibility:hidden;
-    background:linear-gradient(180deg, var(--env), var(--env2));
+    background:linear-gradient(178deg, #f4e9d1 0%, var(--env) 32%, var(--env2) 100%);
     clip-path:polygon(0 0,100% 0,50% 62%);
-    box-shadow:0 1px 0 var(--envline);
+    filter:drop-shadow(0 2px 2px rgba(80,60,35,.16));
     transition:transform 1s cubic-bezier(.4,0,.2,1);
   }
+  html[data-theme="night"] .env-flap{ background:linear-gradient(178deg, #3a332b, var(--env2) 70%); }
   .env.open .env-flap{ transform:rotateX(-178deg); z-index:1; }
+
+  /* 火漆：边缘不规则，字是压进去的 */
   .env-seal{
     position:absolute; left:50%; top:38%; z-index:6;
-    width:74px; height:74px; margin:-37px 0 0 -37px; border-radius:50%;
+    width:80px; height:80px; margin:-40px 0 0 -40px; border-radius:50%;
     display:flex; align-items:center; justify-content:center;
-    background:radial-gradient(circle at 34% 30%, #b04641, var(--seal) 55%, #5f1d1a 100%);
-    box-shadow:0 6px 14px rgba(90,30,25,.30), inset 0 0 0 3px rgba(255,255,255,.10), inset 0 0 0 8px rgba(0,0,0,.10);
-    color:#f2d6cb; font-family:var(--font-kai); font-size:25px; letter-spacing:.1em;
-    cursor:pointer; user-select:none;
+    color:#eecfbf; font-family:var(--font-kai); font-size:25px; letter-spacing:.04em;
+    cursor:pointer; user-select:none; background:none;
+    filter:url(#waxEdge) drop-shadow(0 10px 16px rgba(60,15,12,.45));
+    transform:rotate(-2deg);
     transition:transform .25s ease, opacity .5s ease;
+    text-shadow:
+      0 1px 0 rgba(255,196,176,.28),
+      0 -1px 1px rgba(40,6,4,.55);
   }
   .env-seal::before{
-    content:""; position:absolute; inset:9px; border-radius:50%;
-    border:1px solid rgba(255,210,200,.32);
+    content:""; position:absolute; inset:0; border-radius:50%; z-index:-2;
+    background:
+      radial-gradient(circle at 44% 38%, #a03a34 0%, #842d28 44%, #5c1b18 100%);
+    box-shadow:
+      inset 0 3px 8px rgba(255,170,150,.22),
+      inset 0 -6px 14px rgba(0,0,0,.42),
+      inset 0 0 0 1px rgba(60,10,8,.5);
   }
-  .env-seal:hover{ transform:scale(1.04); }
+  .env-seal::after{
+    content:""; position:absolute; inset:15px; border-radius:50%; z-index:-1;
+    box-shadow:
+      inset 0 1px 2px rgba(30,4,3,.55),
+      0 1px 1px rgba(255,190,170,.14);
+    pointer-events:none;
+  }
+  .env-seal:hover{ transform:rotate(-2deg) scale(1.04); }
   .env-seal.crack{ animation:sealCrack .5s ease forwards; }
   @keyframes sealCrack{
-    0%{ transform:scale(1); opacity:1; }
-    35%{ transform:scale(1.12) rotate(-3deg); }
-    100%{ transform:scale(.76) rotate(6deg) translateY(14px); opacity:0; }
+    0%{ transform:rotate(-2deg) scale(1); opacity:1; }
+    35%{ transform:rotate(-5deg) scale(1.12); }
+    100%{ transform:rotate(4deg) scale(.76) translateY(14px); opacity:0; }
   }
   .env-addr{
-    position:absolute; left:0; right:0; bottom:14%; z-index:7; text-align:center;
-    font-family:var(--font-kai); font-size:clamp(15px,4vw,19px); letter-spacing:.14em;
+    position:absolute; left:0; right:0; bottom:13%; z-index:7; text-align:center;
+    font-family:var(--font-kai); font-size:clamp(16px,4.2vw,20px); letter-spacing:.16em;
     color:var(--ink); pointer-events:none; transition:opacity .5s ease;
+    text-shadow:0 1px 0 rgba(255,255,255,.25);
   }
-  .env-addr small{ display:block; font-size:10.5px; letter-spacing:.32em; color:var(--muted); margin-bottom:4px; }
+  .env-addr small{ display:block; font-size:10.5px; letter-spacing:.36em; color:var(--muted); margin-bottom:6px; }
   .env.open .env-addr{ opacity:0; }
   .env.pull .env-paper{
     z-index:6; transform:translateY(-46%) scale(1.03);
@@ -483,6 +520,7 @@
     padding:8px 12px; border-radius:20px;
   }
   body.sending .lst-sound{ display:block; }
+  body.letterReading .lst-sound{ display:none !important; }
   .lst-sound{ display:none; }
   .lst-back{ position:fixed; top:14px; left:14px; z-index:73; display:none; }
   body.sending.author .lst-back{ display:block; }
@@ -494,6 +532,8 @@
 
   #lread{
     position:fixed; inset:0; z-index:71; display:none; overflow-y:auto;
+    --bg:#d9cbae; --paper:#fdfaf1; --ink:#312b22; --muted:#8d7f68;
+    --line:rgba(90,68,40,.18);
     background:var(--bg);
     background-image:
       radial-gradient(130% 90% at 50% -12%, rgba(255,247,230,.85), rgba(255,247,230,0) 62%),
@@ -501,6 +541,8 @@
     -webkit-overflow-scrolling:touch; overscroll-behavior:contain;
   }
   html[data-theme="night"] #lread{
+    --bg:#171410; --paper:#211e19; --ink:#ded4c2; --muted:#7e7466;
+    --line:rgba(255,255,255,.10);
     background-image:
       radial-gradient(130% 90% at 50% -12%, rgba(255,186,110,.10), rgba(255,186,110,0) 62%),
       radial-gradient(100% 60% at 50% 108%, rgba(0,0,0,.45), rgba(0,0,0,0) 70%);
@@ -1534,6 +1576,13 @@
     resize:vertical; outline:none; margin-bottom:12px;
   }
 </style>
+
+<svg width="0" height="0" aria-hidden="true" style="position:absolute">
+  <filter id="waxEdge" x="-25%" y="-25%" width="150%" height="150%">
+    <feTurbulence type="fractalNoise" baseFrequency="0.05" numOctaves="3" seed="7" result="n"/>
+    <feDisplacementMap in="SourceGraphic" in2="n" scale="5" xChannelSelector="R" yChannelSelector="G"/>
+  </filter>
+</svg>
 
 <div class="lst-sound"><button id="lstMute">声音 开</button></div>
 <div class="lst-back"><button id="lstBack">回到写字</button></div>
