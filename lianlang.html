@@ -1648,13 +1648,14 @@
     <button class="chip" data-lfont="xiaokai">小楷</button>
   </div>
   <div id="pLinkWrap" style="display:none">
-    <label>链接</label>
+    <label id="pLinkLabel">链接</label>
     <textarea id="pLink" readonly spellcheck="false"></textarea>
     <div class="row" style="margin:0 0 12px"><button class="chip" id="pCopy">复制链接</button></div>
   </div>
   <div class="dact">
     <button id="pPreview">先看一遍</button>
     <button id="pCancel">算了</button>
+    <button id="pShort">短链接</button>
     <button id="pMake" class="primary">生成链接</button>
   </div>
 </dialog>
@@ -1664,6 +1665,7 @@
   "use strict";
   const $ = s => document.querySelector(s);
   const HOSTED = "https://zyxhan.github.io/letter/lianlang.html";
+  const CLOUD = ""; // 部署好 Cloudflare 之后填这里，例如 https://lianlang.xxx.workers.dev
   let letter = null, muted = false, busy = false;
 
   try { muted = localStorage.getItem("lst.muted") === "1"; } catch(e){}
@@ -2003,7 +2005,35 @@
       : location.origin + location.pathname;
     $("#pLink").value = base + "#" + packed;
     $("#pLinkWrap").style.display = "block";
+    $("#pLinkLabel").textContent = "链接（整封信在里面）";
     $("#pCopy").textContent = "复制链接";
+  };
+  if (!CLOUD) {
+    const sb = document.querySelector("#pShort");
+    if (sb) sb.style.display = "none";
+  }
+  $("#pShort").onclick = async () => {
+    const d = collect();
+    if (!d.b) { alert("还没有字。"); return; }
+    if (!CLOUD) { alert("云端还没接上。"); return; }
+    $("#pShort").textContent = "正在存…";
+    try {
+      const r = await fetch(CLOUD + "/api/save", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(d)
+      });
+      const j = await r.json();
+      if (!j.url) throw new Error("no url");
+      $("#pLink").value = j.url;
+      $("#pLinkWrap").style.display = "block";
+      $("#pLinkLabel").textContent = "链接（信存在云端）";
+      $("#pCopy").textContent = "复制链接";
+      try { await navigator.clipboard.writeText(j.url); $("#pCopy").textContent = "复制好了"; } catch(e){}
+    } catch (e) {
+      alert("没存上，等会儿再试。");
+    }
+    $("#pShort").textContent = "短链接";
   };
   $("#pCopy").onclick = async () => {
     try { await navigator.clipboard.writeText($("#pLink").value); }
@@ -2037,7 +2067,23 @@
 
   /* ---------- 启动：如果是收信链接 ---------- */
   const hash = location.hash.slice(1);
-  if (hash && /^[zp]/.test(hash)) {
+  if (hash && /^id=/.test(hash)) {
+    document.body.classList.add("sending");
+    const id = hash.slice(3).replace(/[^a-z0-9]/g, "");
+    const load = CLOUD
+      ? fetch(CLOUD + "/api/get?id=" + id).then(r => {
+          if (!r.ok) throw new Error("not found");
+          return r.json();
+        })
+      : Promise.reject(new Error("no cloud"));
+    load.then(data => {
+      queueLetter(data);
+    }).catch(() => {
+      document.body.classList.remove("sending");
+      history.replaceState(null, "", location.pathname);
+      alert("这封信读不出来了。也许它还没被寄出，或者链接不完整。");
+    });
+  } else if (hash && /^[zp]/.test(hash)) {
     document.body.classList.add("sending");
     unpack(hash).then(data => {
       queueLetter(data);
