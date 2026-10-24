@@ -50,6 +50,21 @@
   html[data-font="kai"] body{ font-family:var(--font-kai); }
   html[data-font="sans"] body{ font-family:var(--font-sans); letter-spacing:0; }
   html[data-font="sans"] #editor, html[data-font="sans"] #reader{ letter-spacing:0; }
+  /* 手写体三种（跟信纸同一个来源） */
+  html[data-font="wenkai"] body{
+    font-family:"LXGW WenKai","KaiTi","STKaiti","Kaiti SC","楷体",serif;
+  }
+  html[data-font="yozai"] body{
+    font-family:"Yozai","KaiTi","STKaiti","Kaiti SC","楷体",serif;
+  }
+  html[data-font="xiaokai"] body{
+    font-family:"slideyouran","KaiTi","STKaiti","Kaiti SC","楷体",serif;
+  }
+  html[data-font="wenkai"] #editor, html[data-font="wenkai"] #reader,
+  html[data-font="yozai"] #editor, html[data-font="yozai"] #reader,
+  html[data-font="xiaokai"] #editor, html[data-font="xiaokai"] #reader{
+    letter-spacing:.04em;
+  }
 
   /* 素：无纹理、无光、无圆角，只留线 */
   html[data-theme="plain"] body::before{ opacity:0; }
@@ -814,6 +829,9 @@
         <button class="chip" data-font="sans">黑</button>
         <button class="chip" data-font="serif">宋</button>
         <button class="chip" data-font="kai">楷</button>
+        <button class="chip" data-font="wenkai">文楷</button>
+        <button class="chip" data-font="yozai">悠哉</button>
+        <button class="chip" data-font="xiaokai">小楷</button>
       </div>
       <div class="row" id="rowWidth">
         <button class="chip" data-width="narrow">窄</button>
@@ -1323,6 +1341,23 @@
   }
   function closeDrawer(){ document.body.classList.remove("open"); }
 
+  const UI_FONT_CSS = {
+    yozai: "https://cdn.jsdelivr.net/npm/cn-fontsource-yozai-regular@1.0.9/font.css",
+    xiaokai: "https://cdn.jsdelivr.net/npm/cn-fontsource-slideyouran-regular@1.0.3/font.css"
+  };
+  const uiFontLoaded = {};
+  function ensureUiFont(id){
+    const href = UI_FONT_CSS[id];
+    if (!href || uiFontLoaded[id]) return;
+    uiFontLoaded[id] = 1;
+    try {
+      const link = document.createElement("link");
+      link.rel = "stylesheet";
+      link.href = href;
+      document.head.appendChild(link);
+    } catch (e) {}
+  }
+
   function resolveTheme(){
     const t = state.prefs.theme;
     if (t !== "auto") return t;
@@ -1332,6 +1367,7 @@
   function applyPrefs(){
     el.root.dataset.theme = resolveTheme();
     el.root.dataset.font = state.prefs.font;
+    ensureUiFont(state.prefs.font);
     el.root.dataset.width = state.prefs.width;
     el.root.dataset.layout = state.prefs.layout;
     el.root.style.setProperty("--fs", state.prefs.fs + "px");
