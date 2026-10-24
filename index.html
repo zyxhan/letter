@@ -1995,6 +1995,102 @@
     if (typeof window.lianlangToast === "function") window.lianlangToast(text, undo, ms);
   }
 
+  /* ---------- 端到端加密（ECDH P-256 + AES-GCM，全在浏览器里） ---------- */
+  const B64 = {
+    enc(buf){
+      const b = new Uint8Array(buf);
+      let out = "";
+      for (let i = 0; i < b.length; i++) out += String.fromCharCode(b[i]);
+      return btoa(out).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+    },
+    dec(str){
+      let t = String(str).replace(/-/g, "+").replace(/_/g, "/");
+      while (t.length % 4) t += "=";
+      const bin = atob(t);
+      const out = new Uint8Array(bin.length);
+      for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
+      return out;
+    }
+  };
+  let identity = null;
+  function currentIdentity(){
+    if (identity) return identity;
+    try {
+      const j = JSON.parse(localStorage.getItem("post.id") || "null");
+      if (j && j.s && j.s.d && j.p) identity = j;
+    } catch (e) {}
+    return identity;
+  }
+  async function newIdentity(){
+    const kp = await crypto.subtle.generateKey({ name: "ECDH", namedCurve: "P-256" }, true, ["deriveKey"]);
+    const pub = await crypto.subtle.exportKey("jwk", kp.publicKey);
+    const priv = await crypto.subtle.exportKey("jwk", kp.privateKey);
+    return {
+      p: { kty: "EC", crv: "P-256", x: pub.x, y: pub.y },
+      s: { kty: "EC", crv: "P-256", x: priv.x, y: priv.y, d: priv.d }
+    };
+  }
+  async function ensureIdentity(){
+    const cur = currentIdentity();
+    if (cur) return cur;
+    identity = await newIdentity();
+    try { localStorage.setItem("post.id", JSON.stringify(identity)); } catch (e) {}
+    return identity;
+  }
+  async function importPub(jwk){
+    return crypto.subtle.importKey(
+      "jwk", { kty: "EC", crv: "P-256", x: jwk.x, y: jwk.y },
+      { name: "ECDH", namedCurve: "P-256" }, false, []);
+  }
+  async function importPriv(jwk){
+    return crypto.subtle.importKey("jwk", jwk, { name: "ECDH", namedCurve: "P-256" }, false, ["deriveKey"]);
+  }
+  async function aesFor(priv, pub){
+    return crypto.subtle.deriveKey({ name: "ECDH", public: pub }, priv,
+      { name: "AES-GCM", length: 256 }, false, ["encrypt", "decrypt"]);
+  }
+  async function sealWith(key, obj){
+    const iv = crypto.getRandomValues(new Uint8Array(12));
+    const ct = await crypto.subtle.encrypt({ name: "AES-GCM", iv }, key,
+      new TextEncoder().encode(JSON.stringify(obj)));
+    return { iv: B64.enc(iv), ct: B64.enc(ct) };
+  }
+  async function openWith(key, env){
+    const pt = await crypto.subtle.decrypt({ name: "AES-GCM", iv: B64.dec(env.iv) }, key, B64.dec(env.ct));
+    return JSON.parse(new TextDecoder().decode(pt));
+  }
+  /* 发给某个收信箱：用对方的公钥，配一把一次性的发送方密钥 */
+  async function sealToBox(theirPk, letter){
+    const eph = await crypto.subtle.generateKey({ name: "ECDH", namedCurve: "P-256" }, true, ["deriveKey"]);
+    const key = await aesFor(eph.privateKey, await importPub(theirPk));
+    const sealed = await sealWith(key, letter);
+    const ep = await crypto.subtle.exportKey("jwk", eph.publicKey);
+    return { v: 1, iv: sealed.iv, ct: sealed.ct, ep: { kty: "EC", crv: "P-256", x: ep.x, y: ep.y } };
+  }
+  /* 拆开别人寄到这个信箱的信 */
+  async function openFromBox(env){
+    const id = currentIdentity();
+    if (!id) throw new Error("没有钥匙");
+    if (!env || !env.ep) throw new Error("缺发送方公钥");
+    const key = await aesFor(await importPriv(id.s), await importPub(env.ep));
+    return openWith(key, env);
+  }
+  /* 短链接：随机一把钥匙，塞在 URL 的 # 后面，永远不发到服务器 */
+  async function sealRandom(letter){
+    const rawKey = crypto.getRandomValues(new Uint8Array(32));
+    const key = await crypto.subtle.importKey("raw", rawKey, { name: "AES-GCM" }, false, ["encrypt", "decrypt"]);
+    const sealed = await sealWith(key, letter);
+    return { env: { v: 1, iv: sealed.iv, ct: sealed.ct }, key: B64.enc(rawKey) };
+  }
+  async function openRandom(env, keyStr){
+    const key = await crypto.subtle.importKey("raw", B64.dec(keyStr), { name: "AES-GCM" }, false, ["encrypt", "decrypt"]);
+    return openWith(key, env);
+  }
+  function hasCrypto(){
+    return !!(window.crypto && crypto.subtle && crypto.getRandomValues);
+  }
+
+
   try { muted = localStorage.getItem("lst.muted") === "1"; } catch(e){}
 
   /* ---------- 声音：细碎的纸纤维，不是整段白噪声 ---------- */
@@ -2552,10 +2648,15 @@
     } catch(e){}
     if (inboxPub) {
       try {
+        let payload = d;
+        try {
+          const pk = await boxPk(inboxPub);
+          if (pk && hasCrypto()) payload = await sealToBox(pk, d);
+        } catch (e) { throw e; }
         const r = await fetch(CLOUD + "/api/inbox/" + inboxPub, {
           method: "POST",
           headers: { "content-type": "application/json" },
-          body: JSON.stringify(d)
+          body: JSON.stringify(payload)
         });
         if (!r.ok) throw new Error("send failed");
         $("#postDlg").close();
@@ -2584,15 +2685,21 @@
     if (!CLOUD) { alert("云端还没接上。"); return; }
     $("#pShort").textContent = "正在存…";
     try {
+      let payload = d, keyStr = "";
+      if (hasCrypto()) {
+        const sealed = await sealRandom(d);
+        payload = sealed.env;
+        keyStr = sealed.key;
+      }
       const r = await fetch(CLOUD + "/api/save", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify(d)
+        body: JSON.stringify(payload)
       });
       const j = await r.json();
       if (!j.id) throw new Error("no id");
       const base = location.protocol === "file:" ? HOSTED : location.origin + location.pathname;
-      $("#pLink").value = base + "#id=" + j.id;
+      $("#pLink").value = base + "#id=" + j.id + (keyStr ? "&k=" + keyStr : "");
       $("#pLinkWrap").style.display = "block";
       $("#pLinkLabel").textContent = "链接（信存在云端）";
       $("#pCopy").textContent = "复制链接";
@@ -2661,7 +2768,45 @@
     if (!j.pub) throw new Error("no pub");
     boxPub = j.pub;
     try { localStorage.setItem("post.pub", boxPub); } catch(e){}
+    await publishPk();
     return boxPub;
+  }
+
+  /* 把公钥挂到收信地址上；老信箱在这里升级 */
+  async function publishPk(){
+    if (!CLOUD || !boxPub || !hasCrypto()) return;
+    try {
+      if (localStorage.getItem("post.pkpub") === boxPub) return;
+    } catch (e) {}
+    try {
+      const id = await ensureIdentity();
+      await fetch(CLOUD + "/api/box/register", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ box: boxKey(), pub: boxPub, pk: id.p })
+      });
+      try { localStorage.setItem("post.pkpub", boxPub); } catch (e) {}
+    } catch (e) {}
+  }
+
+  /* 发信前拿对方公钥；首次记住，变了要确认 */
+  async function boxPk(pub){
+    if (!pub) return null;
+    const cacheKey = "post.pk." + pub;
+    let pinned = "";
+    try { pinned = localStorage.getItem(cacheKey) || ""; } catch (e) {}
+    const r = await fetch(CLOUD + "/api/inbox/" + pub);
+    if (!r.ok) throw new Error("地址无效");
+    const j = await r.json();
+    if (!j || !j.pk) return null;
+    const fresh = JSON.stringify(j.pk);
+    if (pinned && pinned !== fresh) {
+      if (!confirm("对方的公钥变了。如果不是他换了设备，可能是有人在中间替换。仍然继续寄吗？")) {
+        throw new Error("pk changed");
+      }
+    }
+    try { localStorage.setItem(cacheKey, fresh); } catch (e) {}
+    return j.pk;
   }
   const ENV_COLOR = { cream: "#efe7d6", kraft: "#d9bd92", navy: "#303b4d" };
   let boxItems = [], boxIndex = -1;
@@ -2765,7 +2910,7 @@
       const top = document.createElement("div");
       top.className = "btop";
       const who = document.createElement("b");
-      who.textContent = (it.f || "无名") + (it.t ? " · 写给" + it.t : "");
+      who.textContent = it._bad ? "这封信读不出来" : ((it.f || "无名") + (it.t ? " · 写给" + it.t : ""));
       if (un) { const dot = document.createElement("i"); dot.className = "dot"; who.appendChild(dot); }
       const tm = document.createElement("span");
       tm.className = "btime";
@@ -2775,7 +2920,9 @@
 
       const pre = document.createElement("p");
       pre.className = "bpre";
-      pre.textContent = it.pre || it.first || "…";
+      pre.textContent = it._bad
+        ? "钥匙不对，或者这封信坏了。可以直接删掉。"
+        : (it.pre || it.first || "…");
 
       const meta = document.createElement("div");
       meta.className = "bmeta";
@@ -2815,7 +2962,26 @@
       const r = await fetch(CLOUD + "/api/box/" + boxKey());
       if (!r.ok) throw new Error("list failed");
       const j = await r.json();
-      renderBoxList(j.items || []);
+      const items = j.items || [];
+      const out = [];
+      for (const it of items) {
+        if (!it.enc) { out.push(it); continue; }
+        try {
+          const d = await openFromBox(it);
+          const body = d.b || "";
+          out.push({
+            id: it.id, at: it.at,
+            f: d.f || "", t: d.t || "", e: d.e || "", p: d.p || "",
+            first: (body.split("\n").map((x) => x.trim()).filter(Boolean)[0] || "").slice(0, 40),
+            n: body.replace(/\s/g, "").length,
+            pre: body.replace(/\s+/g, " ").trim().slice(0, 120),
+            enc: 1
+          });
+        } catch (e) {
+          out.push({ id: it.id, at: it.at, _bad: 1, enc: 1 });
+        }
+      }
+      renderBoxList(out);
     } catch (e) {
       addr.value = "";
       list.innerHTML = "<p class='hint'>连不上，等会儿再试。</p>";
@@ -2824,19 +2990,40 @@
   function closeBox(){
     document.body.classList.remove("boxOpen");
   }
-  function keyToggle(on){
+  function keyBundle(){
+    const id = currentIdentity();
+    return JSON.stringify({ b: boxKey(), s: id ? id.s : null, p: id ? id.p : null });
+  }
+  async function keyToggle(on){
     const box = $("#boxKeyBox");
     if (box) box.style.display = on ? "block" : "none";
+    if (!on) return;
+    try { await ensureIdentity(); } catch (e) {}
     const show = $("#boxKeyShow");
-    if (show && on) show.value = boxKey();
+    if (show) show.value = keyBundle();
   }
   async function importKey(){
     const inp = $("#boxKeyInput");
-    const v = (inp ? inp.value : "").trim().toLowerCase().replace(/[^a-z0-9]/g, "");
-    if (v.length < 10) { say("钥匙不对，至少要 10 位字母或数字。", null, 5000); return; }
+    const raw = (inp ? inp.value : "").trim();
+    let box = "", idj = null;
+    if (raw.charAt(0) === "{") {
+      try {
+        const o = JSON.parse(raw);
+        box = String(o.b || "").toLowerCase().replace(/[^a-z0-9]/g, "");
+        if (o.s && o.p && o.s.d) idj = { s: o.s, p: o.p };
+      } catch (e) {}
+    } else {
+      box = raw.toLowerCase().replace(/[^a-z0-9]/g, "");
+    }
+    if (box.length < 10) { say("钥匙串不对：至少要有那串 10 位以上的信箱钥匙。", null, 6000); return; }
     try {
-      localStorage.setItem("post.box", v);
+      localStorage.setItem("post.box", box);
       localStorage.removeItem("post.pub");
+      localStorage.removeItem("post.pkpub");
+      if (idj) {
+        identity = idj;
+        localStorage.setItem("post.id", JSON.stringify(idj));
+      }
     } catch (e) {}
     boxPub = "";
     if (inp) inp.value = "";
@@ -2885,6 +3072,7 @@
     const r = await fetch(CLOUD + "/api/get?id=" + id);
     if (!r.ok) throw new Error("gone");
     const d = await r.json();
+    if (d && d.v === 1) return openFromBox(d);      // 密文：本地解开
     if (!d || !d.b) throw new Error("empty");
     return d;
   }
@@ -3010,10 +3198,13 @@
       const to = toInput ? toInput.value.trim() : "";
       try { localStorage.setItem("post.to", to); } catch (e) {}
       const d = { t: to, b: body.trim(), f: from, d: todayText(), p: look.p, e: look.e, k: look.k };
+      let payload = d;
+      const pk = await boxPk(inboxPub);
+      if (pk && hasCrypto()) payload = await sealToBox(pk, d);
       const r = await fetch(CLOUD + "/api/inbox/" + inboxPub, {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify(d)
+        body: JSON.stringify(payload)
       });
       if (!r.ok) throw new Error("send failed");
       if (ed) { ed.value = ""; ed.dispatchEvent(new Event("input")); }
@@ -3128,19 +3319,25 @@
     }
   } else if (hash && /^id=/.test(hash)) {
     document.body.classList.add("sending");
-    const id = hash.slice(3).replace(/[^a-z0-9]/g, "");
+    const params = new URLSearchParams(hash);
+    const id = (params.get("id") || "").replace(/[^a-z0-9]/g, "");
+    const keyStr = params.get("k") || "";
     const load = CLOUD
       ? fetch(CLOUD + "/api/get?id=" + id).then(r => {
           if (!r.ok) throw new Error("not found");
           return r.json();
         })
       : Promise.reject(new Error("no cloud"));
-    load.then(data => {
+    load.then(async (data) => {
+      if (data && data.v === 1) {
+        if (!keyStr) throw new Error("no key");
+        data = await openRandom(data, keyStr);
+      }
       queueLetter(data);
     }).catch(() => {
       document.body.classList.remove("sending");
       history.replaceState(null, "", location.pathname);
-      alert("这封信读不出来了。也许它还没被寄出，或者链接不完整。");
+      alert("这封信读不出来了。也许它还没被寄出，或者链接不完整（密钥在 # 后面，别漏掉）。");
     });
   } else if (hash && /^[zp]/.test(hash)) {
     document.body.classList.add("sending");
