@@ -2182,7 +2182,12 @@
       to.textContent = d.t + "：";
       sheet.appendChild(to);
     }
-    (d.b || "").replace(/\r\n/g, "\n").split(/\n{2,}/).forEach(block => {
+    const src = (d.b || "").replace(/\r\n/g, "\n");
+    // 有就按空行分段；通篇一个空行都没有时改按单行分，
+    // 否则整篇会挤成一个 <p>，看起来就是"抬头之后一下子全出来"
+    const blocks = src.split(/\n{2,}/);
+    const pieces = (blocks.length === 1 && src.indexOf("\n") !== -1) ? src.split("\n") : blocks;
+    pieces.forEach(block => {
       const lines = block.split("\n").map(l => l.trim()).filter(Boolean);
       if (!lines.length) return;
       const p = document.createElement("p");
