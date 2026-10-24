@@ -670,23 +670,23 @@
   }
   #inboxSend:hover{ background:rgba(128,128,128,.08); }
   #inboxSend[disabled]{ opacity:.5; }
-  #inboxLook{
+  #inboxLook, #inboxNames{
     display:flex; align-items:center; gap:14px; flex-wrap:wrap;
     font-size:11.5px; letter-spacing:.1em;
   }
-  #inboxLook label{ display:inline-flex; align-items:center; gap:5px; }
+  #inboxLook label, #inboxNames label{ display:inline-flex; align-items:center; gap:5px; }
   #inboxLook select{
     background:none; border:1px solid var(--line); border-radius:14px;
     color:var(--ink); font-family:inherit; font-size:11.5px; letter-spacing:.06em;
     padding:3px 8px; outline:none; cursor:pointer;
   }
   #inboxLook select:focus{ border-color:var(--accent); }
-  #inboxLook input{
+  #inboxLook input, #inboxNames input{
     background:none; border:1px solid var(--line); border-radius:14px;
     color:var(--ink); font-family:inherit; font-size:11.5px; letter-spacing:.06em;
     padding:3px 8px; outline:none; width:6.5em;
   }
-  #inboxLook input:focus{ border-color:var(--accent); }
+  #inboxLook input:focus, #inboxNames input:focus{ border-color:var(--accent); }
   #inboxSwatch{
     width:22px; height:14px; border-radius:2px; display:inline-block;
     background:#efe7d6; box-shadow:inset 0 0 0 1px rgba(0,0,0,.16);
@@ -701,7 +701,7 @@
   }
   @media (max-width:680px){
     #inboxBar{ padding:8px 12px 10px; font-size:12px; gap:8px; }
-    #inboxLook{ gap:10px; }
+    #inboxLook, #inboxNames{ gap:10px; }
     body.inboxmode main{ padding:12px 10px 8px; }
     body.inboxmode.inbox-paper-cream #sheet,
     body.inboxmode.inbox-paper-green #sheet{ padding:18px 16px; }
@@ -751,6 +751,11 @@
       </select>
     </label>
     <span id="inboxSwatch" title="信封颜色"></span>
+  </div>
+  <div id="inboxNames">
+    <label>抬头
+      <input id="inTo" type="text" placeholder="写给谁" spellcheck="false" maxlength="40">
+    </label>
     <label>落款
       <input id="inFrom" type="text" placeholder="不写也行" spellcheck="false" maxlength="40">
     </label>
@@ -2570,6 +2575,8 @@
     if (k) k.value = look.k;
     const from = $("#inFrom");
     if (from) { try { from.value = localStorage.getItem("post.from") || ""; } catch (e) {} }
+    const to = $("#inTo");
+    if (to) { try { to.value = localStorage.getItem("post.to") || ""; } catch (e) {} }
     paintInboxLook();
   }
   function onInboxLook(){
@@ -2598,7 +2605,10 @@
       const fromInput = $("#inFrom");
       const from = fromInput ? fromInput.value.trim() : "";
       try { localStorage.setItem("post.from", from); } catch (e) {}
-      const d = { t: "", b: body.trim(), f: from, d: todayText(), p: look.p, e: look.e, k: look.k };
+      const toInput = $("#inTo");
+      const to = toInput ? toInput.value.trim() : "";
+      try { localStorage.setItem("post.to", to); } catch (e) {}
+      const d = { t: to, b: body.trim(), f: from, d: todayText(), p: look.p, e: look.e, k: look.k };
       const r = await fetch(CLOUD + "/api/inbox/" + inboxPub, {
         method: "POST",
         headers: { "content-type": "application/json" },
