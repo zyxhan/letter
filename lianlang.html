@@ -479,10 +479,10 @@
     will-change:clip-path, transform, opacity;
   }
   html[data-theme="night"] .env-flap{ background:linear-gradient(178deg, #3a332b, var(--env2) 70%); }
+  /* 撕开的封盖不动位置，就这么原地淡掉；位置一直由拖拽时写的内联 transform 保持 */
   .env.torn .env-flap{
-    transform:translateY(-120%) rotate(-7deg) scale(1.02);
     opacity:0;
-    transition:transform 1s cubic-bezier(.2,.8,.2,1), opacity .8s ease;
+    transition:opacity .8s ease;
   }
   .env.torn .env-seal{ opacity:0; transition:opacity .5s ease; }
   .env.torn .env-addr{ opacity:0; }
@@ -611,16 +611,16 @@
   }
   .lsheet .to{
     font-size:18px; letter-spacing:.1em; margin:0 0 1.8em;
-    opacity:0; transform:translateY(6px); transition:opacity .8s ease, transform .8s ease;
+    opacity:0; transform:translateY(6px); transition:opacity .9s ease, transform .9s ease;
   }
   .lsheet p{
     font-size:18px; line-height:2.45; letter-spacing:.06em; text-indent:2em;
     margin:0 0 1.35em; opacity:0; transform:translateY(6px);
-    transition:opacity .9s ease, transform .9s ease;
+    transition:opacity 1s ease, transform 1s ease;
   }
   .lsheet .sign{
     margin-top:3.6em; text-align:right; font-size:16px; line-height:2.2;
-    letter-spacing:.12em; opacity:0; transition:opacity 1.1s ease;
+    letter-spacing:.12em; opacity:0; transition:opacity 1.2s ease;
   }
   .lsheet .sign em{ font-style:normal; color:var(--muted); font-size:12.5px; letter-spacing:.12em; }
   .lsheet .shown{ opacity:1; transform:none; }
@@ -861,13 +861,30 @@
   };
 
   let store = null, memoryOnly = false;
+  let bannerMode = null, quotaWarned = false;
+  function setBanner(text, mode){
+    el.banner.textContent = text || "";
+    el.banner.style.display = text ? "block" : "none";
+    bannerMode = text ? (mode || null) : null;
+  }
+  function isQuotaError(e){
+    if (!e) return false;
+    if (e.name === "QuotaExceededError" || e.name === "NS_ERROR_DOM_QUOTA_REACHED") return true;
+    return e.code === 22 || e.code === 1014;
+  }
+  function warnQuota(){
+    setBanner("浏览器给的地方快存满了（约 5MB），刚写的还没存进去。先导出一份 .txt 或者备份，再清一清回收站和旧稿。", "quota");
+    if (quotaWarned) return;
+    quotaWarned = true;
+    toast("浏览器存满了，刚写的还没存上。先导出一份，好吗？", null, 12000);
+  }
   try {
     localStorage.setItem("__t", "1");
     localStorage.removeItem("__t");
     store = localStorage;
   } catch (e) {
     memoryOnly = true;
-    el.banner.style.display = "block";
+    setBanner("这个浏览器不允许本地保存，写完记得随手导出。", "nostore");
   }
 
   const defaults = {
@@ -909,9 +926,18 @@
 
   function persist(){
     if (!store) return;
-    try { store.setItem(KEY, JSON.stringify(state)); }
+    let text;
+    try { text = JSON.stringify(state); } catch (e) { return; }
+    try {
+      store.setItem(KEY, text);
+      if (bannerMode === "quota") { setBanner(""); quotaWarned = false; }
+    }
     catch (e) {
-      if (!memoryOnly) { memoryOnly = true; el.banner.style.display = "block"; }
+      if (isQuotaError(e)) { warnQuota(); return; }
+      if (!memoryOnly) {
+        memoryOnly = true;
+        setBanner("这个浏览器不允许本地保存，写完记得随手导出。", "nostore");
+      }
     }
   }
 
@@ -1289,8 +1315,8 @@
     let n = 0;
     const fw = { ",": "，", ";": "；", ":": "：", "!": "！", "?": "？" };
     out = out.replace(/\.{3,}/g, () => { n++; return "……"; });
-    out = out.replace(/([\u4e00-\u9fa5])\s*([,;:!?])/g, (m, a, b) => { n++; return a + fw[b]; });
-    out = out.replace(/([\u4e00-\u9fa5])\s*\.(?![0-9])/g, (m, a) => { n++; return a + "。"; });
+    out = out.replace(/([\u4e00-\u9fa5])[ \t]*([,;:!?])/g, (m, a, b) => { n++; return a + fw[b]; });
+    out = out.replace(/([\u4e00-\u9fa5])[ \t]*\.(?![0-9])/g, (m, a) => { n++; return a + "。"; });
     out = out.replace(/\(([^()\n]{1,40})\)/g, (m, inner) => {
       if (!/[\u4e00-\u9fa5]/.test(inner)) return m;
       n++; return "（" + inner + "）";
@@ -2169,8 +2195,11 @@
     sign.innerHTML = escapeHtml(d.f || "") + "<br><em>" + escapeHtml(d.d || todayText()) + "</em>";
     sheet.appendChild(sign);
     const items = sheet.querySelectorAll(".to, p, .sign");
+    // 一段一段来：这一段浮完，下一段才开始（步长比淡入略长，留一点空隙）
+    // 段数多的时候把步长收小，别让最后一段等太久
+    const step = Math.min(1.05, 8 / Math.max(1, items.length - 1));
     items.forEach((el, k) => {
-      el.style.transitionDelay = (0.25 + k * 0.42) + "s";
+      el.style.transitionDelay = (0.35 + k * step) + "s";
     });
     requestAnimationFrame(() => {
       setTimeout(() => items.forEach(el => el.classList.add("shown")), 80);
@@ -2263,12 +2292,13 @@
     const d = collect();
     if (!d.b) { alert("还没有字。"); return; }
     $("#postDlg").close();
-    queueLetter(d);
-    resetEnv();
-    document.body.classList.add("sending", "author");
     if (document.body.classList.contains("open")) {
       document.querySelector("#scrim").click();
     }
+    // 先把信封摆出来，量得到宽度，撕口才不会先画成一条直线
+    document.body.classList.add("sending", "author");
+    resetEnv();
+    queueLetter(d);
   };
   $("#lstBack").onclick = () => {
     document.body.classList.remove("sending", "author", "letterReading");
