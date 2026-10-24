@@ -1750,6 +1750,8 @@
     border:1px solid var(--line); border-radius:6px; padding:0 14px; background:none; cursor:pointer;
   }
   #boxPanel .bhint{ margin:8px 0 0; font-size:11px; color:var(--muted); line-height:1.8; }
+  #boxPanel .bpre2{ flex:0 0 auto; align-self:center; font-size:11.5px; color:var(--muted); letter-spacing:.02em; }
+  #boxPanel #boxName{ letter-spacing:.06em; }
 
   #boxList{ margin-top:6px; }
   #boxList .boxday{
@@ -1906,9 +1908,16 @@
     </div>
     <div class="baddr">
       <label for="boxAddr">你的收信地址</label>
-      <div class="bline">
+      <div class="bline" id="boxAddrRow">
         <input id="boxAddr" readonly spellcheck="false">
         <button id="boxCopy">复制</button>
+        <button id="boxRename">改</button>
+      </div>
+      <div class="bline" id="boxNameRow" style="display:none">
+        <span class="bpre2">#inbox=</span>
+        <input id="boxName" spellcheck="false" placeholder="3–24 位小写字母或数字" maxlength="24">
+        <button id="boxSave">保存</button>
+        <button id="boxCancelName">取消</button>
       </div>
       <p class="bhint">发给别人，他们打开就能往这里写信。地址只能投，看不到里面的内容。</p>
     </div>
@@ -2758,6 +2767,38 @@
   function closeBox(){
     document.body.classList.remove("boxOpen");
   }
+  function showNameEditor(on){
+    const a = $("#boxAddrRow"), n = $("#boxNameRow");
+    if (a) a.style.display = on ? "none" : "flex";
+    if (n) n.style.display = on ? "flex" : "none";
+    if (on) {
+      const inp = $("#boxName");
+      if (inp) { inp.value = boxPub || ""; try { inp.focus(); } catch (e) {} }
+    }
+  }
+  async function saveName(){
+    const inp = $("#boxName");
+    const want = (inp ? inp.value : "").trim().toLowerCase().replace(/[^a-z0-9]/g, "");
+    if (want.length < 3) { say("至少 3 位小写字母或数字。", null, 5000); return; }
+    try {
+      const r = await fetch(CLOUD + "/api/box/register", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ box: boxKey(), pub: want })
+      });
+      const j = await r.json().catch(() => ({}));
+      if (r.status === 409) { say("这个地址有人用了，换一个。", null, 5000); return; }
+      if (!r.ok || !j.pub) throw new Error(j.error || "failed");
+      boxPub = j.pub;
+      try { localStorage.setItem("post.pub", boxPub); } catch (e) {}
+      const addr = $("#boxAddr");
+      if (addr) addr.value = boxBase() + "#inbox=" + boxPub;
+      showNameEditor(false);
+      say("改好了。以后分享这个地址。", null, 7000);
+    } catch (e) {
+      say("没改成，等会儿再试。", null, 6000);
+    }
+  }
   async function openBox(){
     if (!CLOUD) return;
     document.body.classList.add("boxOpen");
@@ -2935,6 +2976,12 @@
     };
     const boxClose = $("#boxClose");
     if (boxClose) boxClose.onclick = closeBox;
+    const rename = $("#boxRename");
+    if (rename) rename.onclick = () => showNameEditor(true);
+    const saveBtn = $("#boxSave");
+    if (saveBtn) saveBtn.onclick = saveName;
+    const cancelBtn = $("#boxCancelName");
+    if (cancelBtn) cancelBtn.onclick = () => showNameEditor(false);
     window.addEventListener("keydown", e => {
       if (e.key === "Escape" && document.body.classList.contains("boxOpen")) closeBox();
     });
