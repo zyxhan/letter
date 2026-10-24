@@ -2062,8 +2062,8 @@
     finished = true;
     progress = 1;
     paintTear();
+    S.tearGrain(1);   // 先出声：tearStop 会把 tearNodes 清空，晚一步这声就被吞了
     S.tearStop();
-    S.tearGrain(1);
     buzz([14, 26, 20]);
     envBox.classList.add("torn");
     setTimeout(() => { S.slide(); envBox.classList.add("pull"); }, 300);
