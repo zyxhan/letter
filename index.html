@@ -47,7 +47,6 @@
     overscroll-behavior:none;
     transition:background-color .6s ease, color .6s ease;
   }
-  html[data-font="kai"] body{ font-family:var(--font-kai); }
   html[data-font="sans"] body{ font-family:var(--font-sans); letter-spacing:0; }
   html[data-font="sans"] #editor, html[data-font="sans"] #reader{ letter-spacing:0; }
   /* 手写体三种（跟信纸同一个来源） */
@@ -828,7 +827,6 @@
       <div class="row" id="rowFont">
         <button class="chip" data-font="sans">黑</button>
         <button class="chip" data-font="serif">宋</button>
-        <button class="chip" data-font="kai">楷</button>
         <button class="chip" data-font="wenkai">文楷</button>
         <button class="chip" data-font="yozai">悠哉</button>
         <button class="chip" data-font="xiaokai">小楷</button>
@@ -1365,6 +1363,7 @@
     return (h >= 19 || h < 7) ? "night" : "paper";
   }
   function applyPrefs(){
+    if (state.prefs.font === "kai") state.prefs.font = "wenkai";  // 楷并入文楷
     el.root.dataset.theme = resolveTheme();
     el.root.dataset.font = state.prefs.font;
     ensureUiFont(state.prefs.font);
