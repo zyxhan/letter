@@ -652,6 +652,55 @@
     .lst-hint{ margin-top:22px; font-size:11.5px; }
   }
 
+  /* 收信地址模式：一行提示 + 三个选择 + 一个「寄出」 */
+  #inboxBar{
+    display:none; flex-direction:column; gap:10px;
+    padding:10px 18px 12px; padding-top:calc(10px + env(safe-area-inset-top));
+    border-bottom:1px solid var(--line);
+    font-size:12.5px; letter-spacing:.14em; color:var(--muted);
+  }
+  body.inboxmode #inboxBar{ display:flex; }
+  body.inboxmode header, body.inboxmode footer,
+  body.inboxmode #drawer, body.inboxmode #scrim{ display:none !important; }
+  body.inboxmode main{ padding:18px 16px 12px; }
+  #inboxBar .row1{ display:flex; align-items:center; justify-content:space-between; gap:14px; }
+  #inboxSend{
+    font-size:13px; letter-spacing:.16em; color:var(--ink);
+    border:1px solid var(--line); border-radius:20px; padding:7px 18px; white-space:nowrap;
+  }
+  #inboxSend:hover{ background:rgba(128,128,128,.08); }
+  #inboxSend[disabled]{ opacity:.5; }
+  #inboxLook{
+    display:flex; align-items:center; gap:14px; flex-wrap:wrap;
+    font-size:11.5px; letter-spacing:.1em;
+  }
+  #inboxLook label{ display:inline-flex; align-items:center; gap:5px; }
+  #inboxLook select{
+    background:none; border:1px solid var(--line); border-radius:14px;
+    color:var(--ink); font-family:inherit; font-size:11.5px; letter-spacing:.06em;
+    padding:3px 8px; outline:none; cursor:pointer;
+  }
+  #inboxLook select:focus{ border-color:var(--accent); }
+  #inboxSwatch{
+    width:22px; height:14px; border-radius:2px; display:inline-block;
+    background:#efe7d6; box-shadow:inset 0 0 0 1px rgba(0,0,0,.16);
+  }
+  body.inboxmode.inbox-paper-cream #sheet{
+    background:#fbf2df; border-radius:3px; padding:26px 28px;
+    box-shadow:0 1px 2px rgba(90,70,45,.12), 0 14px 40px -16px rgba(90,70,45,.3);
+  }
+  body.inboxmode.inbox-paper-green #sheet{
+    background:#edf1e6; border-radius:3px; padding:26px 28px;
+    box-shadow:0 1px 2px rgba(90,70,45,.12), 0 14px 40px -16px rgba(90,70,45,.3);
+  }
+  @media (max-width:680px){
+    #inboxBar{ padding:8px 12px 10px; font-size:12px; gap:8px; }
+    #inboxLook{ gap:10px; }
+    body.inboxmode main{ padding:12px 10px 8px; }
+    body.inboxmode.inbox-paper-cream #sheet,
+    body.inboxmode.inbox-paper-green #sheet{ padding:18px 16px; }
+  }
+
   @media print{
     body{ background:#fff; color:#000; overflow:visible; display:block; }
     body::before{ display:none; }
@@ -667,6 +716,37 @@
 </head>
 <body>
 <div id="light" aria-hidden="true"></div>
+
+<div id="inboxBar">
+  <div class="row1">
+    <span>写一封会寄到的信</span>
+    <button id="inboxSend">寄出</button>
+  </div>
+  <div id="inboxLook">
+    <label>信纸
+      <select id="inPaper">
+        <option value="plain">素白</option>
+        <option value="cream">米黄</option>
+        <option value="green">青笺</option>
+      </select>
+    </label>
+    <label>信封
+      <select id="inEnv">
+        <option value="cream">米色</option>
+        <option value="kraft">牛皮</option>
+        <option value="navy">墨蓝</option>
+      </select>
+    </label>
+    <label>字
+      <select id="inFont">
+        <option value="wenkai">文楷</option>
+        <option value="yozai">悠哉</option>
+        <option value="xiaokai">小楷</option>
+      </select>
+    </label>
+    <span id="inboxSwatch" title="信封颜色"></span>
+  </div>
+</div>
 
 <header id="bar">
   <button id="btnDrawer" title="文章与设置">文章</button>
@@ -2462,6 +2542,72 @@
       alert("这封信取不到了，也许它已经过期。");
     }
   }
+  /* ---------- 收信地址模式：只留一个「寄出」 ---------- */
+  const ENV_COLOR = { cream: "#efe7d6", kraft: "#d9bd92", navy: "#303b4d" };
+  function paintInboxLook(){
+    const ed = $("#editor");
+    const f = LET_FONTS[look.k] || LET_FONTS.wenkai;
+    if (ed) ed.style.fontFamily = f.family + ',"KaiTi","STKaiti",serif';
+    document.body.classList.remove("inbox-paper-cream", "inbox-paper-green");
+    if (look.p === "cream") document.body.classList.add("inbox-paper-cream");
+    if (look.p === "green") document.body.classList.add("inbox-paper-green");
+    const sw = $("#inboxSwatch");
+    if (sw) sw.style.background = ENV_COLOR[look.e] || ENV_COLOR.cream;
+  }
+  function syncInboxLook(){
+    const p = $("#inPaper"), e = $("#inEnv"), k = $("#inFont");
+    if (p) p.value = look.p;
+    if (e) e.value = look.e;
+    if (k) k.value = look.k;
+    paintInboxLook();
+  }
+  function onInboxLook(){
+    const p = $("#inPaper"), e = $("#inEnv"), k = $("#inFont");
+    look = { p: p ? p.value : look.p, e: e ? e.value : look.e, k: k ? k.value : look.k };
+    applyLook();
+    paintInboxLook();
+  }
+  ["inPaper", "inEnv", "inFont"].forEach(id => {
+    const sel = $("#" + id);
+    if (sel) sel.onchange = onInboxLook;
+  });
+  function enterInboxMode(){
+    document.body.classList.add("inboxmode");
+    const ed = $("#editor");
+    if (ed) ed.placeholder = "想说什么就写什么。写完点右上角「寄出」。";
+    syncInboxLook();
+  }
+  async function sendToInbox(){
+    const ed = $("#editor");
+    const body = ed ? ed.value : "";
+    if (!body.trim()) { say("还没写字呢。", null, 5000); return; }
+    const btn = $("#inboxSend");
+    if (btn) { btn.disabled = true; btn.textContent = "寄出中…"; }
+    try {
+      let from = "";
+      try { from = localStorage.getItem("post.from") || ""; } catch (e) {}
+      const d = { t: "", b: body.trim(), f: from, d: todayText(), p: look.p, e: look.e, k: look.k };
+      const r = await fetch(CLOUD + "/api/inbox/" + inboxPub, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(d)
+      });
+      if (!r.ok) throw new Error("send failed");
+      if (ed) { ed.value = ""; ed.dispatchEvent(new Event("input")); }
+      say("寄到了。对方打开收信箱就能看到。", null, 9000);
+      if (btn) btn.textContent = "再寄一封";
+    } catch (e) {
+      say("没寄出去，等会儿再试。", null, 7000);
+      if (btn) btn.textContent = "寄出";
+    } finally {
+      if (btn) btn.disabled = false;
+    }
+  }
+  {
+    const b = $("#inboxSend");
+    if (b) b.onclick = sendToInbox;
+  }
+
   if (CLOUD) {
     const btnBox = $("#btnBox");
     if (btnBox) {
@@ -2508,8 +2654,8 @@
             const r = await fetch(CLOUD + "/api/inbox/" + pub);
             if (r.ok) {
               inboxPub = pub;
-              document.title = "给这个信箱写信";
-              say("这是别人的收信箱。写完点「寄出去」，直接寄给他。", null, 10000);
+              document.title = "写一封会寄到的信";
+              enterInboxMode();
               return;
             }
             status = r.status;
