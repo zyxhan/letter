@@ -1474,32 +1474,186 @@
     });
   }
 
-  function buildLetter(d, to, from){
-    const title = d.title.trim() || (d.body.split("\n").find(l => l.trim()) || "无题").trim();
-    const paras = d.body.replace(/\r\n/g, "\n").split(/\n{2,}/)
-      .map(b => b.split("\n").map(l => l.trim()).filter(Boolean).join("<br>"))
-      .filter(Boolean)
-      .map(p => "<p>" + esc(p) + "</p>").join("\n");
-    const now = new Date();
-    const dateStr = now.getFullYear() + " 年 " + (now.getMonth() + 1) + " 月 " + now.getDate() + " 日";
-    const head = to ? '<div class="to">' + esc(to) + '：</div>\n' : "";
-    const tail = '<div class="end">' + (from ? esc(from) + "<br>" : "") + dateStr + "</div>";
-    return '<!doctype html>\n<html lang="zh-CN">\n<head>\n<meta charset="utf-8">\n' +
-      '<meta name="viewport" content="width=device-width,initial-scale=1">\n' +
-      '<title>' + esc(title) + '</title>\n<style>\n' +
-      'html,body{margin:0;padding:0;background:#f6f1e7;color:#312c26;}\n' +
-      'body{font-family:"Source Han Serif SC","Noto Serif SC","Songti SC",STSong,"SimSun",serif;' +
-      '-webkit-font-smoothing:antialiased;}\n' +
-      '.page{max-width:33em;margin:0 auto;padding:clamp(44px,10vh,120px) 28px 130px;}\n' +
-      'h1{font-size:1.4em;font-weight:500;letter-spacing:.08em;line-height:1.85;margin:0 0 2em;}\n' +
-      '.to{font-size:17px;line-height:2;letter-spacing:.04em;margin:0 0 1.2em;}\n' +
-      'p{font-size:17px;line-height:2.1;letter-spacing:.02em;text-indent:2em;margin:0 0 1.05em;}\n' +
-      '.end{margin-top:3.4em;font-size:13px;line-height:2;letter-spacing:.1em;color:#8d8271;text-align:right;}\n' +
-      '@media (max-width:600px){p,.to{font-size:16.5px;}.page{padding-left:22px;padding-right:22px;}}\n' +
-      '@media print{body{background:#fff;}.page{padding:0;max-width:none;}}\n' +
-      '</style>\n</head>\n<body>\n<div class="page">\n' +
-      '<h1>' + esc(title) + '</h1>\n' + head + paras + '\n' + tail + '\n</div>\n</body>\n</html>';
+  /* 导成信：一封信该有的样子——信封、火漆、手撕、信纸逐段浮现。
+     整页自包含，双击就能拆，不需要联网、不需要服务器。 */
+/* 导成信：生成一个自包含的信（信封 + 火漆 + 手撕 + 信纸逐段浮现）。
+   依赖外部的 esc() 和 localStorage。 */
+function buildLetter(d, to, from) {
+  const now = new Date();
+  const dateStr = now.getFullYear() + " 年 " + (now.getMonth() + 1) + " 月 " + now.getDate() + " 日";
+  const title = (d.title || "").trim() ||
+    ((d.body || "").split("\n").find((l) => l.trim()) || "一封信").trim();
+
+  let look = { p: "plain", e: "cream", k: "wenkai" };
+  try {
+    const saved = JSON.parse(localStorage.getItem("post.look") || "null");
+    if (saved && saved.p) look = Object.assign(look, saved);
+  } catch (e) {}
+
+  const PAPER = { plain: "#fdfaf1", cream: "#fbf2df", green: "#edf1e6" };
+  const ENV = { cream: "#efe7d6", kraft: "#d9bd92", navy: "#303b4d" };
+  const FONT = {
+    wenkai: '"LXGW WenKai","KaiTi","STKaiti","Kaiti SC","楷体",serif',
+    yozai: '"Yozai","KaiTi","STKaiti",serif',
+    xiaokai: '"slideyouran","KaiTi","STKaiti",serif'
+  };
+  const FONT_CSS = {
+    wenkai: "https://cdn.jsdelivr.net/npm/lxgw-wenkai-webfont@1.7.0/lxgwwenkai-regular.css",
+    yozai: "https://cdn.jsdelivr.net/npm/cn-fontsource-yozai-regular@1.0.9/font.css",
+    xiaokai: "https://cdn.jsdelivr.net/npm/cn-fontsource-slideyouran-regular@1.0.3/font.css"
+  };
+  const paper = PAPER[look.p] || PAPER.plain;
+  const env = ENV[look.e] || ENV.cream;
+  const font = FONT[look.k] || FONT.wenkai;
+  const fontLink = FONT_CSS[look.k] ? '<link rel="stylesheet" href="' + FONT_CSS[look.k] + '">' : "";
+  const ink = look.e === "navy" ? "#e9e3d6" : "#312c26";
+
+  let idx = 0;
+  const paras = (d.body || "").replace(/\r\n/g, "\n").split(/\n{2,}/).map((block) => {
+    const ls = block.split("\n").map((l) => l.trim()).filter(Boolean);
+    if (!ls.length) return "";
+    const delay = (0.6 + idx * 0.6).toFixed(2);
+    idx++;
+    return '<p style="transition-delay:' + delay + 's">' + ls.map(esc).join("<br>") + "</p>";
+  }).filter(Boolean).join("\n");
+
+  const peek = (d.body || "").split("\n").map((x) => x.trim()).filter(Boolean).slice(0, 2);
+  const head = to ? '<div class="to">' + esc(to) + "：</div>\n" : "";
+  const tail = '<div class="end">' + (from ? esc(from) + "<br>" : "") + dateStr + "</div>";
+
+  const SCRIPT = `
+(function(){
+  var env=document.getElementById('env'),flap=document.getElementById('flap'),front=document.getElementById('front'),
+      paper=env.querySelector('.paper'),seal=document.getElementById('seal'),stage=document.getElementById('stage'),
+      letter=document.getElementById('letter'),hint=document.getElementById('hint');
+  var W=0,H=0,jag=[],prog=0,drag=false,base=0,done=false,sealed=true;
+  function build(){
+    var r=env.getBoundingClientRect(); if(!r.width) return;
+    W=r.width; H=r.height; jag=[]; var v=0,n=Math.ceil(W/16)+2;
+    for(var i=0;i<n;i++){ v+=(Math.random()-0.5)*1.6; if(v>8)v=8; if(v<-8)v=-8; jag.push(v); }
+    paint();
   }
+  function yAt(x){
+    var t=x/16,i=Math.floor(t),f=t-i,a=jag[i]||0,b=(jag[i+1]===undefined?a:jag[i+1]);
+    var s=f*f*(3-2*f);
+    return H*0.40+a+(b-a)*s;
+  }
+  function poly(pts){
+    var o='polygon(';
+    for(var i=0;i<pts.length;i++){ o+=pts[i][0].toFixed(1)+'px '+pts[i][1].toFixed(1)+'px,'; }
+    return o.substring(0,o.length-1)+')';
+  }
+  function paint(){
+    if(!W) return;
+    var p=Math.max(0,Math.min(1,prog)),fx=p*W,step=6,f,g,x;
+    f=[[0,0],[W,0],[W,yAt(W)]];
+    for(x=W;x>=fx;x-=step) f.push([x,yAt(x)]);
+    f.push([fx,yAt(fx)],[fx,H*0.4],[0,H*0.4]);
+    flap.style.clipPath=poly(f);
+    g=[[0,H],[0,yAt(0)]];
+    for(x=0;x<=fx;x+=step) g.push([x,yAt(x)]);
+    g.push([fx,yAt(fx)],[fx,H*0.4],[W,H*0.4],[W,H]);
+    front.style.clipPath=poly(g);
+    flap.style.transform='translateY('+(-p*3)+'px)';
+  }
+  function finish(){
+    if(done) return; done=true;
+    flap.style.transition='opacity .7s ease'; flap.style.opacity='0';
+    seal.style.opacity='0';
+    setTimeout(function(){ paper.style.transform='translateY(-46%) scale(1.03)'; },80);
+    setTimeout(function(){
+      stage.style.opacity='0';
+      letter.style.display='block';
+      setTimeout(function(){
+        letter.classList.add('on');
+        stage.style.display='none';
+        window.scrollTo(0,0);
+      },120);
+    },820);
+  }
+  function down(e){
+    if(sealed||done) return;
+    drag=true; base=e.clientX-prog*W*0.85;
+    try{ env.setPointerCapture(e.pointerId); }catch(err){}
+    e.preventDefault();
+  }
+  function move(e){
+    if(!drag) return;
+    var p=Math.abs(e.clientX-base)/(W*0.85);
+    prog=Math.max(0,Math.min(1,p)); paint();
+    if(prog>=0.98){ drag=false; finish(); }
+  }
+  function up(){ drag=false; }
+  seal.addEventListener('pointerdown',function(e){
+    e.stopPropagation(); e.preventDefault();
+    sealed=false; seal.style.opacity='0'; seal.style.pointerEvents='none';
+    hint.textContent='按住信封，慢慢撕开';
+  });
+  env.addEventListener('pointerdown',down);
+  env.addEventListener('pointermove',move);
+  env.addEventListener('pointerup',up);
+  env.addEventListener('pointercancel',up);
+  window.addEventListener('resize',function(){ if(!done) build(); });
+  setTimeout(build,60);
+})();
+`;
+
+  const STYLE = `
+:root{--paper:${paper};--env:${env};--ink:${ink};--font:${font}}
+*{box-sizing:border-box}
+html,body{margin:0;min-height:100%}
+body{background:#e7dfcf;color:#312c26;font-family:var(--font);-webkit-font-smoothing:antialiased}
+body::after{content:'';position:fixed;inset:0;pointer-events:none;z-index:9;opacity:.05;mix-blend-mode:multiply;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)' opacity='0.45'/%3E%3C/svg%3E")}
+#stage{position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:26px;transition:opacity .7s ease}
+#env{position:relative;width:min(86vw,520px);aspect-ratio:1.55/1;touch-action:none;user-select:none;
+  filter:drop-shadow(0 2px 2px rgba(70,50,28,.22)) drop-shadow(0 18px 28px rgba(70,50,28,.26))}
+.back,.front,.flap{position:absolute;inset:0;border-radius:2px}
+.back{background:linear-gradient(170deg,var(--env),#00000018)}
+.paper{position:absolute;left:5%;bottom:8%;width:90%;height:88%;z-index:2;background:var(--paper);border-radius:1px;
+  padding:18px 20px;overflow:hidden;color:#8d8271;font-size:13px;line-height:2.05;
+  box-shadow:0 2px 6px rgba(90,70,45,.22),0 12px 28px rgba(90,70,45,.18),inset 0 0 0 1px rgba(120,100,70,.14);
+  transition:transform .95s cubic-bezier(.22,.9,.25,1),opacity .5s ease}
+.front{z-index:3;background:linear-gradient(163deg,var(--env),#00000022);
+  clip-path:polygon(0 40%,100% 40%,100% 100%,0 100%);box-shadow:inset 0 1px 0 rgba(255,255,255,.35)}
+.flap{z-index:5;transform-origin:top center;background:linear-gradient(178deg,#f4e9d1,var(--env) 32%);
+  clip-path:polygon(0 0,100% 0,100% 40%,0 40%);will-change:clip-path,opacity}
+.seal{position:absolute;left:50%;top:38%;z-index:6;width:80px;height:80px;margin:-40px 0 0 -40px;border-radius:50%;
+  display:flex;align-items:center;justify-content:center;cursor:pointer;user-select:none;color:#eecfbf;
+  font-family:var(--font);font-size:25px;letter-spacing:.04em;
+  background:radial-gradient(circle at 44% 38%,#a03a34,#842d28 44%,#5c1b18 100%);
+  box-shadow:0 10px 16px rgba(60,15,12,.45),inset 0 3px 8px rgba(255,170,150,.22),inset 0 -6px 14px rgba(0,0,0,.42);
+  text-shadow:0 1px 0 rgba(255,196,176,.28),0 -1px 1px rgba(40,6,4,.55);transition:transform .25s ease,opacity .5s ease}
+.seal:hover{transform:scale(1.04)}
+.addr{position:absolute;left:0;right:0;bottom:13%;z-index:7;text-align:center;font-size:clamp(16px,4.2vw,20px);
+  letter-spacing:.16em;color:var(--ink);pointer-events:none;transition:opacity .5s ease}
+.addr small{display:block;font-size:10.5px;letter-spacing:.36em;opacity:.7;margin-bottom:6px}
+.hint{font-size:12px;letter-spacing:.28em;color:#8d7f68}
+#letter{display:none;max-width:34em;margin:0 auto;padding:clamp(46px,9vh,96px) clamp(22px,5vw,52px) 120px;
+  background:var(--paper);min-height:100vh;box-shadow:0 0 60px rgba(90,70,45,.12)}
+#letter p,#letter .to,#letter .end{opacity:0;transform:translateY(6px);transition:opacity .95s ease,transform .95s ease}
+#letter.on p,#letter.on .to,#letter.on .end{opacity:1;transform:none}
+#letter .to{font-size:17px;letter-spacing:.06em;margin:0 0 1.4em}
+#letter p{font-size:17px;line-height:2.15;letter-spacing:.03em;text-indent:2em;margin:0 0 1.05em}
+#letter .end{margin-top:3.4em;text-align:right;font-size:15px;line-height:2.1;letter-spacing:.08em;color:#4a4238}
+@media (max-width:600px){#letter p,#letter .to{font-size:16.5px}}
+@media print{body{background:#fff}body::after,#stage{display:none!important}
+  #letter{display:block!important;box-shadow:none;padding:0;max-width:none}
+  #letter p,#letter .to,#letter .end{opacity:1!important;transform:none!important}}
+`;
+
+  return '<!doctype html>\n<html lang="zh-CN">\n<head>\n<meta charset="utf-8">\n' +
+    '<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">\n' +
+    "<title>" + esc(title) + "</title>\n" + fontLink + "\n<style>" + STYLE + "</style>\n</head>\n<body>\n" +
+    '<div id="stage">\n  <div id="env">\n    <div class="back"></div>\n' +
+    '    <div class="paper">' + peek.map(esc).join("<br>") + "</div>\n" +
+    '    <div class="front" id="front"></div>\n    <div class="flap" id="flap"></div>\n' +
+    '    <div class="seal" id="seal">信</div>\n' +
+    '    <div class="addr"><small>致</small>' + esc(to || "你") + "</div>\n  </div>\n" +
+    '  <p class="hint" id="hint">点开火漆，再撕开</p>\n</div>\n' +
+    '<div id="letter">\n' + head + paras + "\n" + tail + "\n</div>\n" +
+    "<script>" + SCRIPT + "<\/script>\n</body>\n</html>\n";
+}
 
   /* 停下来的时候，轻轻提醒一句 */
   let lastInputAt = 0, typedSinceRest = 0, restReminded = false;
