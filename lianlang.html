@@ -1718,46 +1718,87 @@
 })();
 </script>
 <style>
-  #boxList{ max-height:42vh; overflow-y:auto; margin:0 0 6px; }
+  /* 收信箱：整页 */
+  #boxPanel{
+    position:fixed; inset:0; z-index:72; display:none; overflow-y:auto;
+    background:var(--bg); color:var(--ink);
+    padding:34px 20px 90px; -webkit-overflow-scrolling:touch;
+  }
+  body.boxOpen #boxPanel{ display:block; }
+  #boxPanel .binner{ max-width:36em; margin:0 auto; }
+  #boxPanel .bhead{
+    display:flex; align-items:flex-end; justify-content:space-between; gap:16px;
+    padding-bottom:14px; border-bottom:1px solid var(--line);
+  }
+  #boxPanel h2{ margin:0; font-size:16px; font-weight:600; letter-spacing:.22em; }
+  #boxPanel .bcount{ margin:6px 0 0; font-size:11.5px; color:var(--muted); letter-spacing:.12em; }
+  #boxPanel .bclose{
+    font-size:12px; letter-spacing:.12em; color:var(--muted);
+    border:1px solid var(--line); border-radius:20px; padding:6px 14px; background:none; cursor:pointer;
+  }
+  #boxPanel .bclose:hover{ color:var(--ink); }
+  #boxPanel .baddr{ padding:16px 0 6px; }
+  #boxPanel .baddr label{ display:block; font-size:10.5px; color:var(--muted); letter-spacing:.2em; margin-bottom:6px; }
+  #boxPanel .bline{ display:flex; gap:8px; }
+  #boxPanel .bline input{
+    flex:1; min-width:0; background:none; border:1px solid var(--line); border-radius:6px;
+    padding:8px 10px; color:var(--ink); font-family:inherit; font-size:12.5px;
+    letter-spacing:.02em; outline:none;
+  }
+  #boxPanel .bline button{
+    flex:0 0 auto; font-size:12px; letter-spacing:.1em; color:var(--ink);
+    border:1px solid var(--line); border-radius:6px; padding:0 14px; background:none; cursor:pointer;
+  }
+  #boxPanel .bhint{ margin:8px 0 0; font-size:11px; color:var(--muted); line-height:1.8; }
+
+  #boxList{ margin-top:6px; }
   #boxList .boxday{
     font-size:10.5px; color:var(--muted); letter-spacing:.22em;
-    padding:10px 2px 4px;
+    padding:18px 0 6px;
   }
-  #boxList .boxday:first-child{ padding-top:2px; }
   #boxList .boxrow{
-    display:flex; align-items:center; gap:10px;
-    padding:8px 2px; border-top:1px dashed var(--line);
+    display:flex; gap:12px; align-items:flex-start;
+    padding:14px 2px; border-top:1px dashed var(--line);
   }
   #boxList .boxday + .boxrow{ border-top:0; }
-  #boxList .boxrow:first-child{ border-top:0; }
   #boxList .swatch{
-    flex:0 0 auto; width:8px; height:28px; border-radius:2px;
-    box-shadow:inset 0 0 0 1px rgba(0,0,0,.14);
-    background:#efe7d6;
+    flex:0 0 auto; width:9px; height:54px; border-radius:2px; margin-top:2px;
+    box-shadow:inset 0 0 0 1px rgba(0,0,0,.14); background:#efe7d6;
   }
+  #boxList .bbody{ flex:1; min-width:0; }
   #boxList .mopen{
-    flex:1; min-width:0; text-align:left; background:none; border:0; padding:0;
-    color:var(--ink); font-size:13px; letter-spacing:.04em; cursor:pointer;
+    display:block; width:100%; text-align:left; background:none; border:0; padding:0;
+    cursor:pointer; color:inherit; font-family:inherit;
   }
-  #boxList .mopen b{
-    display:block; font-weight:400; color:var(--muted); font-size:12.5px; margin-bottom:2px;
+  #boxList .btop{ display:flex; align-items:baseline; gap:8px; }
+  #boxList .btop b{
+    font-weight:400; color:var(--muted); font-size:12.5px; letter-spacing:.06em;
     overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
   }
-  #boxList .boxrow.unread .mopen b{ color:var(--ink); font-weight:600; }
-  #boxList .mopen small{
-    display:block; color:var(--muted); font-size:11.5px;
-    overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+  #boxList .boxrow.unread .btop b{ color:var(--ink); font-weight:600; }
+  #boxList .btime{
+    margin-left:auto; flex:0 0 auto; font-size:11px; color:var(--muted);
+    font-variant-numeric:tabular-nums; letter-spacing:.04em;
   }
+  #boxList .bpre{
+    margin:6px 0 0; font-size:14px; line-height:1.85; color:var(--ink);
+    display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden;
+  }
+  #boxList .bmeta{ margin-top:7px; font-size:11px; color:var(--muted); letter-spacing:.08em; }
   #boxList .dot{
     display:inline-block; width:5px; height:5px; border-radius:50%;
     background:#8e2f2b; margin-left:6px; vertical-align:middle;
   }
   #boxList .mdel{
-    flex:0 0 auto; font-size:11px; color:var(--muted); padding:4px 9px;
-    border:1px solid var(--line); border-radius:12px; background:none;
+    flex:0 0 auto; align-self:flex-end; font-size:11px; color:var(--muted);
+    padding:3px 9px; border:1px solid var(--line); border-radius:12px; background:none;
     letter-spacing:.06em; cursor:pointer;
   }
   #boxList .mdel:hover{ color:#8e2f2b; border-color:#8e2f2b; }
+  @media (max-width:680px){
+    #boxPanel{ padding:20px 14px 80px; }
+    #boxList .bpre{ font-size:13.5px; }
+  }
   #boxNav{
     position:fixed; left:50%; bottom:20px; transform:translateX(-50%);
     display:none; align-items:center; gap:14px; z-index:73;
@@ -1854,17 +1895,26 @@
   </div>
 </dialog>
 
-<dialog id="boxDlg">
-  <h3>收信箱</h3>
-  <p class="tip">把这个地址发给别人，他打开就能往你的箱子里投信。地址只能投信，看不到里面的内容。</p>
-  <label for="boxAddr">你的收信地址</label>
-  <input id="boxAddr" readonly spellcheck="false">
-  <div class="row" style="margin:0 0 14px"><button class="chip" id="boxCopy">复制地址</button></div>
-  <div id="boxList"><p class="hint">还没有信。</p></div>
-  <div class="dact">
-    <button id="boxCancel">合上</button>
+<div id="boxPanel">
+  <div class="binner">
+    <div class="bhead">
+      <div>
+        <h2>收信箱</h2>
+        <p id="boxCount" class="bcount"></p>
+      </div>
+      <button id="boxClose" class="bclose">合上</button>
+    </div>
+    <div class="baddr">
+      <label for="boxAddr">你的收信地址</label>
+      <div class="bline">
+        <input id="boxAddr" readonly spellcheck="false">
+        <button id="boxCopy">复制</button>
+      </div>
+      <p class="bhint">发给别人，他们打开就能往这里写信。地址只能投，看不到里面的内容。</p>
+    </div>
+    <div id="boxList"><p class="hint">还没有信。</p></div>
   </div>
-</dialog>
+</div>
 
 <script>
 (function(){
@@ -2593,28 +2643,40 @@
     } catch (e) {}
   }
 
+  const PAPER_NAME = { plain: "素白", cream: "米黄", green: "青笺" };
+  const ENV_NAME = { cream: "米色", kraft: "牛皮", navy: "墨蓝" };
+  function timeText(t){
+    const d = new Date(t || Date.now());
+    const hh = String(d.getHours()).padStart(2, "0");
+    const mm = String(d.getMinutes()).padStart(2, "0");
+    if (dayLabel(t) === "更早") return (d.getMonth() + 1) + "/" + d.getDate() + " " + hh + ":" + mm;
+    return hh + ":" + mm;
+  }
   function renderBoxList(items){
     const host = $("#boxList");
     if (!host) return;
     host.innerHTML = "";
     boxItems = items || [];
+    const cnt = $("#boxCount");
     if (!boxItems.length) {
       const p = document.createElement("p");
       p.className = "hint";
+      p.style.marginTop = "18px";
       p.textContent = "还没有信。把你的地址发出去，等它来。";
       host.appendChild(p);
+      if (cnt) cnt.textContent = "还没收到信";
       updateBoxBadge(0);
       return;
     }
     let day = "", unread = 0;
     boxItems.forEach((it, idx) => {
-      const d = dayLabel(it.at);
-      if (d !== day) {
+      const g = dayLabel(it.at);
+      if (g !== day) {
         const h = document.createElement("div");
         h.className = "boxday";
-        h.textContent = d;
+        h.textContent = g;
         host.appendChild(h);
-        day = d;
+        day = g;
       }
       const un = isUnread(it.id);
       if (un) unread++;
@@ -2628,21 +2690,41 @@
       sw.title = "信封颜色";
       row.appendChild(sw);
 
+      const cell = document.createElement("div");
+      cell.className = "bbody";
+
       const open = document.createElement("button");
       open.className = "mopen";
+
+      const top = document.createElement("div");
+      top.className = "btop";
       const who = document.createElement("b");
-      who.textContent = (it.f || "有人") + " 写来的";
-      if (un) {
-        const dot = document.createElement("i");
-        dot.className = "dot";
-        who.appendChild(dot);
-      }
-      const sub = document.createElement("small");
-      sub.textContent = whenText(it.at) + " · " + (it.first || "…");
-      open.appendChild(who);
-      open.appendChild(sub);
+      who.textContent = (it.f || "无名") + (it.t ? " · 写给" + it.t : "");
+      if (un) { const dot = document.createElement("i"); dot.className = "dot"; who.appendChild(dot); }
+      const tm = document.createElement("span");
+      tm.className = "btime";
+      tm.textContent = timeText(it.at);
+      top.appendChild(who);
+      top.appendChild(tm);
+
+      const pre = document.createElement("p");
+      pre.className = "bpre";
+      pre.textContent = it.pre || it.first || "…";
+
+      const meta = document.createElement("div");
+      meta.className = "bmeta";
+      const bits = [];
+      if (it.n) bits.push(it.n + " 字");
+      if (PAPER_NAME[it.p]) bits.push(PAPER_NAME[it.p] + "信纸");
+      if (ENV_NAME[it.e]) bits.push(ENV_NAME[it.e] + "信封");
+      meta.textContent = bits.join(" · ");
+
+      open.appendChild(top);
+      open.appendChild(pre);
+      open.appendChild(meta);
       open.onclick = () => openBoxLetterAt(idx);
-      row.appendChild(open);
+      cell.appendChild(open);
+      row.appendChild(cell);
 
       const del = document.createElement("button");
       del.className = "mdel";
@@ -2652,6 +2734,7 @@
 
       host.appendChild(row);
     });
+    if (cnt) cnt.textContent = boxItems.length + " 封信" + (unread ? " · " + unread + " 封没读" : "");
     updateBoxBadge(unread);
   }
 
@@ -2672,11 +2755,12 @@
       list.innerHTML = "<p class='hint'>连不上，等会儿再试。</p>";
     }
   }
+  function closeBox(){
+    document.body.classList.remove("boxOpen");
+  }
   async function openBox(){
     if (!CLOUD) return;
-    const dlg = $("#boxDlg");
-    if (!dlg) return;
-    if (!dlg.open) dlg.showModal();
+    document.body.classList.add("boxOpen");
     await loadBox();
   }
   async function fetchLetter(id){
@@ -2693,8 +2777,7 @@
       const d = await fetchLetter(it.id);
       boxIndex = i;
       markRead(it.id);
-      const dlg = $("#boxDlg");
-      if (dlg && dlg.open) dlg.close();
+      closeBox();
       document.body.classList.remove("open");
       queueLetter(d, true);
       resetEnv();
@@ -2850,8 +2933,11 @@
       boxCopy.textContent = "复制好了";
       setTimeout(() => { boxCopy.textContent = "复制地址"; }, 1600);
     };
-    const boxCancel = $("#boxCancel");
-    if (boxCancel) boxCancel.onclick = () => $("#boxDlg").close();
+    const boxClose = $("#boxClose");
+    if (boxClose) boxClose.onclick = closeBox;
+    window.addEventListener("keydown", e => {
+      if (e.key === "Escape" && document.body.classList.contains("boxOpen")) closeBox();
+    });
   }
 
   /* 入口 */
