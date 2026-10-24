@@ -751,6 +751,7 @@
       </div>
       <div class="row">
         <button class="chip" id="btnPost">寄出去</button>
+        <button class="chip" id="btnBox" style="display:none">收信箱</button>
         <button class="chip" id="btnLetter">导出 .html</button>
         <button class="chip" id="btnDelete">先放回收站</button>
       </div>
@@ -1622,6 +1623,16 @@
 })();
 </script>
 <style>
+  #boxList{ max-height:40vh; overflow-y:auto; margin:0 0 6px; }
+  #boxList .boxrow{
+    display:block; width:100%; text-align:left; padding:9px 4px;
+    border:0; border-top:1px dashed var(--line); border-radius:0;
+    background:none; color:var(--ink); font-size:13px; letter-spacing:.04em; cursor:pointer;
+  }
+  #boxList .boxrow:first-of-type{ border-top:0; }
+  #boxList .boxrow:hover{ background:rgba(128,128,128,.06); }
+  #boxList .boxrow b{ display:block; font-weight:400; margin-bottom:2px; }
+  #boxList .boxrow small{ display:block; color:var(--muted); font-size:11.5px; }
   #lread .ls-close{ position:fixed; top:14px; right:14px; z-index:73; }
   #lread .ls-close button{
     font-size:12px; letter-spacing:.1em; color:var(--muted);
@@ -1701,13 +1712,26 @@
   </div>
 </dialog>
 
+<dialog id="boxDlg">
+  <h3>收信箱</h3>
+  <p class="tip">把这个地址发给别人，他打开就能往你的箱子里投信。地址只能投信，看不到里面的内容。</p>
+  <label for="boxAddr">你的收信地址</label>
+  <input id="boxAddr" readonly spellcheck="false">
+  <div class="row" style="margin:0 0 14px"><button class="chip" id="boxCopy">复制地址</button></div>
+  <div id="boxList"><p class="hint">还没有信。</p></div>
+  <div class="dact">
+    <button id="boxCancel">合上</button>
+  </div>
+</dialog>
+
 <script>
 (function(){
   "use strict";
   const $ = s => document.querySelector(s);
   const HOSTED = "https://zyxhan.github.io/letter/lianlang.html";
-  const CLOUD = ""; // 部署好 Cloudflare 之后填这里，例如 https://lianlang.xxx.workers.dev
+  const CLOUD = "https://letter.lianlang.top"; // 部署好 Cloudflare 之后填这里，例如 https://lianlang.xxx.workers.dev
   let letter = null, muted = false, busy = false;
+  let inboxPub = "", readFromBox = false;
 
   try { muted = localStorage.getItem("lst.muted") === "1"; } catch(e){}
 
@@ -1966,9 +1990,9 @@
   function escapeHtml(s){
     return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
   }
-  function queueLetter(data){
+  function queueLetter(data, keepLook){
     letter = data;
-    if (data.p || data.e || data.k) {
+    if (!keepLook && (data.p || data.e || data.k)) {
       look = { p: data.p || "plain", e: data.e || "cream", k: data.k || "wenkai" };
       applyLook();
     }
@@ -2210,7 +2234,16 @@
       setTimeout(() => items.forEach(el => el.classList.add("shown")), 80);
     });
   }
-  $("#lstClose").onclick = resetEnv;
+  $("#lstClose").onclick = () => {
+    if (readFromBox) {
+      readFromBox = false;
+      document.body.classList.remove("sending", "letterReading");
+      resetEnv();
+      openBox();
+      return;
+    }
+    resetEnv();
+  };
 
   /* ---------- 寄出去 ---------- */
   function currentPiece(){
@@ -2229,6 +2262,7 @@
     $("#pTo").value = to;
     $("#pFrom").value = from;
     $("#pLinkWrap").style.display = "none";
+    $("#pMake").textContent = inboxPub ? "寄出去" : "生成链接";
     $("#postDlg").showModal();
     setTimeout(() => $("#pTo").focus(), 60);
   }
@@ -2251,6 +2285,21 @@
       localStorage.setItem("post.to", d.t);
       localStorage.setItem("post.from", d.f);
     } catch(e){}
+    if (inboxPub) {
+      try {
+        const r = await fetch(CLOUD + "/api/inbox/" + inboxPub, {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify(d)
+        });
+        if (!r.ok) throw new Error("send failed");
+        $("#postDlg").close();
+        toast("寄到了，对方打开收信箱就能看到。", null, 9000);
+      } catch (e) {
+        alert("没寄出去，等会儿再试。");
+      }
+      return;
+    }
     const packed = await pack(d);
     const base = location.protocol === "file:"
       ? HOSTED
@@ -2276,8 +2325,9 @@
         body: JSON.stringify(d)
       });
       const j = await r.json();
-      if (!j.url) throw new Error("no url");
-      $("#pLink").value = j.url;
+      if (!j.id) throw new Error("no id");
+      const base = location.protocol === "file:" ? HOSTED : location.origin + location.pathname;
+      $("#pLink").value = base + "#id=" + j.id;
       $("#pLinkWrap").style.display = "block";
       $("#pLinkLabel").textContent = "链接（信存在云端）";
       $("#pCopy").textContent = "复制链接";
@@ -2310,6 +2360,126 @@
     resetEnv();
   };
 
+  /* ---------- 收信箱 ---------- */
+  let boxPub = "";
+  function boxKey(){
+    let v = "";
+    try { v = localStorage.getItem("post.box") || ""; } catch(e){}
+    if (/^[a-z0-9]{10,32}$/.test(v)) return v;
+    const abc = "23456789abcdefghjkmnpqrstuvwxyz";
+    const buf = new Uint8Array(16);
+    if (window.crypto && crypto.getRandomValues) crypto.getRandomValues(buf);
+    else for (let i = 0; i < buf.length; i++) buf[i] = (Math.random() * 256) | 0;
+    let s = "";
+    for (let i = 0; i < buf.length; i++) s += abc[buf[i] % abc.length];
+    try { localStorage.setItem("post.box", s); } catch(e){}
+    return s;
+  }
+  function whenText(t){
+    const d = new Date(t || Date.now());
+    return (d.getMonth() + 1) + "/" + d.getDate() + " " +
+      String(d.getHours()).padStart(2, "0") + ":" + String(d.getMinutes()).padStart(2, "0");
+  }
+  function boxBase(){
+    return location.protocol === "file:" ? HOSTED : location.origin + location.pathname;
+  }
+  async function ensureBox(){
+    if (boxPub) return boxPub;
+    try { boxPub = localStorage.getItem("post.pub") || ""; } catch(e){}
+    if (boxPub) return boxPub;
+    const r = await fetch(CLOUD + "/api/box/register", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ box: boxKey() })
+    });
+    const j = await r.json();
+    if (!j.pub) throw new Error("no pub");
+    boxPub = j.pub;
+    try { localStorage.setItem("post.pub", boxPub); } catch(e){}
+    return boxPub;
+  }
+  function renderBoxList(items){
+    const host = $("#boxList");
+    if (!host) return;
+    host.innerHTML = "";
+    if (!items || !items.length) {
+      host.innerHTML = "<p class='hint'>还没有信。把你的地址发出去，等它来。</p>";
+      return;
+    }
+    items.forEach(it => {
+      const b = document.createElement("button");
+      b.className = "boxrow";
+      const who = document.createElement("b");
+      who.textContent = (it.f || "有人") + " 写来的";
+      const sub = document.createElement("small");
+      sub.textContent = whenText(it.at) + " · " + (it.first || "…");
+      b.appendChild(who);
+      b.appendChild(sub);
+      b.onclick = () => openBoxLetter(it.id);
+      host.appendChild(b);
+    });
+  }
+  async function openBox(){
+    if (!CLOUD) return;
+    const dlg = $("#boxDlg");
+    if (!dlg) return;
+    if (!dlg.open) dlg.showModal();
+    const addr = $("#boxAddr"), list = $("#boxList");
+    if (!addr || !list) return;
+    addr.value = "登记中…";
+    list.innerHTML = "<p class='hint'>正在取…</p>";
+    try {
+      const pub = await ensureBox();
+      addr.value = boxBase() + "#inbox=" + pub;
+      const r = await fetch(CLOUD + "/api/box/" + boxKey());
+      if (!r.ok) throw new Error("list failed");
+      const j = await r.json();
+      renderBoxList(j.items || []);
+    } catch (e) {
+      addr.value = "";
+      list.innerHTML = "<p class='hint'>连不上，等会儿再试。</p>";
+    }
+  }
+  async function openBoxLetter(id){
+    try {
+      const r = await fetch(CLOUD + "/api/get?id=" + id);
+      if (!r.ok) throw new Error("gone");
+      const d = await r.json();
+      if (!d || !d.b) throw new Error("empty");
+      const dlg = $("#boxDlg");
+      if (dlg) dlg.close();
+      document.body.classList.remove("open");
+      queueLetter(d, true);
+      resetEnv();
+      document.body.classList.add("sending");
+      readFromBox = true;
+    } catch (e) {
+      alert("这封信取不到了，也许它已经过期。");
+    }
+  }
+  if (CLOUD) {
+    const btnBox = $("#btnBox");
+    if (btnBox) {
+      btnBox.style.display = "";
+      btnBox.onclick = () => {
+        document.body.classList.remove("open");
+        openBox();
+      };
+    }
+    const boxCopy = $("#boxCopy");
+    if (boxCopy) boxCopy.onclick = async () => {
+      const addr = $("#boxAddr");
+      const v = addr ? addr.value : "";
+      if (!v || v === "登记中…") return;
+      try { await navigator.clipboard.writeText(v); }
+      catch(e){ addr.select(); document.execCommand("copy"); }
+      boxCopy.textContent = "复制好了";
+      setTimeout(() => { boxCopy.textContent = "复制地址"; }, 1600);
+    };
+    const boxCancel = $("#boxCancel");
+    if (boxCancel) boxCancel.onclick = () => $("#boxDlg").close();
+  }
+
   /* 入口 */
   const btnPost = $("#btnPost");
   if (btnPost) btnPost.onclick = () => {
@@ -2320,7 +2490,24 @@
 
   /* ---------- 启动：如果是收信链接 ---------- */
   const hash = location.hash.slice(1);
-  if (hash && /^id=/.test(hash)) {
+  if (hash && /^inbox=/.test(hash)) {
+    const pub = hash.slice("inbox=".length).replace(/[^a-z0-9]/g, "");
+    if (!CLOUD) {
+      alert("这个收信地址还没接上云端。");
+    } else {
+      fetch(CLOUD + "/api/inbox/" + pub)
+        .then(r => { if (!r.ok) throw new Error("bad"); return r.json(); })
+        .then(() => {
+          inboxPub = pub;
+          document.title = "给这个信箱写信";
+          toast("这是别人的收信箱。写完点「寄出去」，直接寄给他。", null, 10000);
+        })
+        .catch(() => {
+          history.replaceState(null, "", location.pathname);
+          alert("这个收信地址不存在。");
+        });
+    }
+  } else if (hash && /^id=/.test(hash)) {
     document.body.classList.add("sending");
     const id = hash.slice(3).replace(/[^a-z0-9]/g, "");
     const load = CLOUD
