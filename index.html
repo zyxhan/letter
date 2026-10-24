@@ -1751,6 +1751,14 @@
   }
   #boxPanel .bhint{ margin:8px 0 0; font-size:11px; color:var(--muted); line-height:1.8; }
   #boxPanel .bpre2{ flex:0 0 auto; align-self:center; font-size:11.5px; color:var(--muted); letter-spacing:.02em; }
+  #boxPanel .bkey{ margin-top:14px; }
+  #boxPanel .blink{
+    background:none; border:0; padding:0; cursor:pointer;
+    color:var(--accent); font-family:inherit; font-size:11px; letter-spacing:.08em;
+    text-decoration:underline; text-underline-offset:3px;
+  }
+  #boxPanel .bkey .bline{ margin-top:6px; }
+  #boxPanel .bkey .bhint{ margin-top:10px; }
   #boxPanel #boxName{ letter-spacing:.06em; }
 
   #boxList{ margin-top:6px; }
@@ -1920,6 +1928,20 @@
         <button id="boxCancelName">取消</button>
       </div>
       <p class="bhint">发给别人，他们打开就能往这里写信。地址只能投，看不到里面的内容。</p>
+      <div class="bkey">
+        <button id="boxKeyToggle" class="blink">备份钥匙 / 换电脑时接回信箱</button>
+        <div id="boxKeyBox" style="display:none">
+          <p class="bhint">下面这串是信箱钥匙，只存在这台电脑的浏览器里。<strong>别发给别人</strong>；换电脑或清了浏览器数据时，用它把信箱接回来。</p>
+          <div class="bline">
+            <input id="boxKeyShow" readonly spellcheck="false">
+            <button id="boxKeyCopy">复制</button>
+          </div>
+          <div class="bline">
+            <input id="boxKeyInput" spellcheck="false" placeholder="粘贴旧钥匙，把这个信箱接回来" maxlength="32">
+            <button id="boxKeyImport">接回</button>
+          </div>
+        </div>
+      </div>
     </div>
     <div id="boxList"><p class="hint">还没有信。</p></div>
   </div>
@@ -2767,6 +2789,26 @@
   function closeBox(){
     document.body.classList.remove("boxOpen");
   }
+  function keyToggle(on){
+    const box = $("#boxKeyBox");
+    if (box) box.style.display = on ? "block" : "none";
+    const show = $("#boxKeyShow");
+    if (show && on) show.value = boxKey();
+  }
+  async function importKey(){
+    const inp = $("#boxKeyInput");
+    const v = (inp ? inp.value : "").trim().toLowerCase().replace(/[^a-z0-9]/g, "");
+    if (v.length < 10) { say("钥匙不对，至少要 10 位字母或数字。", null, 5000); return; }
+    try {
+      localStorage.setItem("post.box", v);
+      localStorage.removeItem("post.pub");
+    } catch (e) {}
+    boxPub = "";
+    if (inp) inp.value = "";
+    say("接回来了，正在取信…", null, 4000);
+    await loadBox();
+    refreshBadge();
+  }
   function showNameEditor(on){
     const a = $("#boxAddrRow"), n = $("#boxNameRow");
     if (a) a.style.display = on ? "none" : "flex";
@@ -2978,6 +3020,22 @@
     if (boxClose) boxClose.onclick = closeBox;
     const rename = $("#boxRename");
     if (rename) rename.onclick = () => showNameEditor(true);
+    const keyToggleBtn = $("#boxKeyToggle");
+    if (keyToggleBtn) keyToggleBtn.onclick = () => {
+      const box = $("#boxKeyBox");
+      keyToggle(!(box && box.style.display === "block"));
+    };
+    const keyCopy = $("#boxKeyCopy");
+    if (keyCopy) keyCopy.onclick = async () => {
+      const v = $("#boxKeyShow") ? $("#boxKeyShow").value : "";
+      if (!v) return;
+      try { await navigator.clipboard.writeText(v); }
+      catch (e) { const el = $("#boxKeyShow"); if (el) { el.select(); document.execCommand("copy"); } }
+      keyCopy.textContent = "复制好了";
+      setTimeout(() => { keyCopy.textContent = "复制"; }, 1600);
+    };
+    const keyImport = $("#boxKeyImport");
+    if (keyImport) keyImport.onclick = importKey;
     const saveBtn = $("#boxSave");
     if (saveBtn) saveBtn.onclick = saveName;
     const cancelBtn = $("#boxCancelName");
