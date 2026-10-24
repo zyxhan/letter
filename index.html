@@ -681,6 +681,12 @@
     padding:3px 8px; outline:none; cursor:pointer;
   }
   #inboxLook select:focus{ border-color:var(--accent); }
+  #inboxLook input{
+    background:none; border:1px solid var(--line); border-radius:14px;
+    color:var(--ink); font-family:inherit; font-size:11.5px; letter-spacing:.06em;
+    padding:3px 8px; outline:none; width:6.5em;
+  }
+  #inboxLook input:focus{ border-color:var(--accent); }
   #inboxSwatch{
     width:22px; height:14px; border-radius:2px; display:inline-block;
     background:#efe7d6; box-shadow:inset 0 0 0 1px rgba(0,0,0,.16);
@@ -745,6 +751,9 @@
       </select>
     </label>
     <span id="inboxSwatch" title="信封颜色"></span>
+    <label>落款
+      <input id="inFrom" type="text" placeholder="不写也行" spellcheck="false" maxlength="40">
+    </label>
   </div>
 </div>
 
@@ -2559,6 +2568,8 @@
     if (p) p.value = look.p;
     if (e) e.value = look.e;
     if (k) k.value = look.k;
+    const from = $("#inFrom");
+    if (from) { try { from.value = localStorage.getItem("post.from") || ""; } catch (e) {} }
     paintInboxLook();
   }
   function onInboxLook(){
@@ -2584,8 +2595,9 @@
     const btn = $("#inboxSend");
     if (btn) { btn.disabled = true; btn.textContent = "寄出中…"; }
     try {
-      let from = "";
-      try { from = localStorage.getItem("post.from") || ""; } catch (e) {}
+      const fromInput = $("#inFrom");
+      const from = fromInput ? fromInput.value.trim() : "";
+      try { localStorage.setItem("post.from", from); } catch (e) {}
       const d = { t: "", b: body.trim(), f: from, d: todayText(), p: look.p, e: look.e, k: look.k };
       const r = await fetch(CLOUD + "/api/inbox/" + inboxPub, {
         method: "POST",
