@@ -1718,16 +1718,57 @@
 })();
 </script>
 <style>
-  #boxList{ max-height:40vh; overflow-y:auto; margin:0 0 6px; }
-  #boxList .boxrow{
-    display:block; width:100%; text-align:left; padding:9px 4px;
-    border:0; border-top:1px dashed var(--line); border-radius:0;
-    background:none; color:var(--ink); font-size:13px; letter-spacing:.04em; cursor:pointer;
+  #boxList{ max-height:42vh; overflow-y:auto; margin:0 0 6px; }
+  #boxList .boxday{
+    font-size:10.5px; color:var(--muted); letter-spacing:.22em;
+    padding:10px 2px 4px;
   }
-  #boxList .boxrow:first-of-type{ border-top:0; }
-  #boxList .boxrow:hover{ background:rgba(128,128,128,.06); }
-  #boxList .boxrow b{ display:block; font-weight:400; margin-bottom:2px; }
-  #boxList .boxrow small{ display:block; color:var(--muted); font-size:11.5px; }
+  #boxList .boxday:first-child{ padding-top:2px; }
+  #boxList .boxrow{
+    display:flex; align-items:center; gap:10px;
+    padding:8px 2px; border-top:1px dashed var(--line);
+  }
+  #boxList .boxday + .boxrow{ border-top:0; }
+  #boxList .boxrow:first-child{ border-top:0; }
+  #boxList .swatch{
+    flex:0 0 auto; width:8px; height:28px; border-radius:2px;
+    box-shadow:inset 0 0 0 1px rgba(0,0,0,.14);
+    background:#efe7d6;
+  }
+  #boxList .mopen{
+    flex:1; min-width:0; text-align:left; background:none; border:0; padding:0;
+    color:var(--ink); font-size:13px; letter-spacing:.04em; cursor:pointer;
+  }
+  #boxList .mopen b{
+    display:block; font-weight:400; color:var(--muted); font-size:12.5px; margin-bottom:2px;
+    overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+  }
+  #boxList .boxrow.unread .mopen b{ color:var(--ink); font-weight:600; }
+  #boxList .mopen small{
+    display:block; color:var(--muted); font-size:11.5px;
+    overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+  }
+  #boxList .dot{
+    display:inline-block; width:5px; height:5px; border-radius:50%;
+    background:#8e2f2b; margin-left:6px; vertical-align:middle;
+  }
+  #boxList .mdel{
+    flex:0 0 auto; font-size:11px; color:var(--muted); padding:4px 9px;
+    border:1px solid var(--line); border-radius:12px; background:none;
+    letter-spacing:.06em; cursor:pointer;
+  }
+  #boxList .mdel:hover{ color:#8e2f2b; border-color:#8e2f2b; }
+  #boxNav{
+    position:fixed; left:50%; bottom:20px; transform:translateX(-50%);
+    display:none; align-items:center; gap:14px; z-index:73;
+    padding:7px 14px; border-radius:22px;
+    background:rgba(251,248,242,.9); color:#5c5348;
+    box-shadow:0 6px 24px rgba(0,0,0,.14);
+    font-size:12px; letter-spacing:.08em; white-space:nowrap;
+  }
+  #boxNav button{ font-size:12px; color:#5c5348; padding:2px 6px; background:none; border:0; cursor:pointer; }
+  #boxNav button[disabled]{ opacity:.3; cursor:default; }
+  #boxNavText{ color:#8d8271; font-variant-numeric:tabular-nums; }
   #lread .ls-close{ position:fixed; top:14px; right:14px; z-index:73; }
   #lread .ls-close button{
     font-size:12px; letter-spacing:.1em; color:var(--muted);
@@ -1767,6 +1808,12 @@
 <div id="lread">
   <div class="ls-close"><button id="lstClose" class="postmark">合上</button></div>
   <div class="lsheet" id="lsheet"></div>
+</div>
+
+<div id="boxNav">
+  <button id="boxPrev">‹ 上一封</button>
+  <span id="boxNavText"></span>
+  <button id="boxNext">下一封 ›</button>
 </div>
 
 <dialog id="postDlg">
@@ -2282,6 +2329,8 @@
 
   function resetEnv(){
     document.body.classList.remove("letterReading");
+    const nav = $("#boxNav");
+    if (nav) nav.style.display = "none";
     envBox.classList.remove("torn", "pull", "read");
     $("#envSeal").classList.remove("crack");
     $("#envSeal").style.opacity = "";
@@ -2332,6 +2381,7 @@
     requestAnimationFrame(() => {
       setTimeout(() => items.forEach(el => el.classList.add("shown")), 80);
     });
+    updateNav();
   }
   $("#lstClose").onclick = () => {
     if (readFromBox) {
@@ -2497,34 +2547,117 @@
     try { localStorage.setItem("post.pub", boxPub); } catch(e){}
     return boxPub;
   }
+  const ENV_COLOR = { cream: "#efe7d6", kraft: "#d9bd92", navy: "#303b4d" };
+  let boxItems = [], boxIndex = -1;
+
+  function readIds(){
+    try {
+      const v = JSON.parse(localStorage.getItem("post.read") || "[]");
+      return Array.isArray(v) ? v : [];
+    } catch (e) { return []; }
+  }
+  function isUnread(id){ return readIds().indexOf(id) < 0; }
+  function markRead(id){
+    try {
+      const arr = readIds();
+      if (arr.indexOf(id) >= 0) return;
+      arr.push(id);
+      while (arr.length > 500) arr.shift();
+      localStorage.setItem("post.read", JSON.stringify(arr));
+    } catch (e) {}
+  }
+  function dayLabel(t){
+    const d = new Date(t || Date.now());
+    const n = new Date();
+    const same = (a, b) => a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
+    if (same(d, n)) return "今天";
+    if (same(d, new Date(n.getTime() - 86400000))) return "昨天";
+    return (d.getMonth() + 1) + " 月";
+  }
+  function updateBoxBadge(n){
+    const b = $("#btnBox");
+    if (!b) return;
+    b.textContent = n > 0 ? "收信箱 · " + n : "收信箱";
+  }
+  async function refreshBadge(){
+    if (!CLOUD) return;
+    try { if (!boxPub) boxPub = localStorage.getItem("post.pub") || ""; } catch (e) {}
+    if (!boxPub) return;
+    try {
+      const r = await fetch(CLOUD + "/api/box/" + boxKey());
+      if (!r.ok) return;
+      const j = await r.json();
+      let n = 0;
+      (j.items || []).forEach(it => { if (isUnread(it.id)) n++; });
+      updateBoxBadge(n);
+    } catch (e) {}
+  }
+
   function renderBoxList(items){
     const host = $("#boxList");
     if (!host) return;
     host.innerHTML = "";
-    if (!items || !items.length) {
-      host.innerHTML = "<p class='hint'>还没有信。把你的地址发出去，等它来。</p>";
+    boxItems = items || [];
+    if (!boxItems.length) {
+      const p = document.createElement("p");
+      p.className = "hint";
+      p.textContent = "还没有信。把你的地址发出去，等它来。";
+      host.appendChild(p);
+      updateBoxBadge(0);
       return;
     }
-    items.forEach(it => {
-      const b = document.createElement("button");
-      b.className = "boxrow";
+    let day = "", unread = 0;
+    boxItems.forEach((it, idx) => {
+      const d = dayLabel(it.at);
+      if (d !== day) {
+        const h = document.createElement("div");
+        h.className = "boxday";
+        h.textContent = d;
+        host.appendChild(h);
+        day = d;
+      }
+      const un = isUnread(it.id);
+      if (un) unread++;
+
+      const row = document.createElement("div");
+      row.className = "boxrow" + (un ? " unread" : "");
+
+      const sw = document.createElement("span");
+      sw.className = "swatch";
+      sw.style.background = ENV_COLOR[it.e] || ENV_COLOR.cream;
+      sw.title = "信封颜色";
+      row.appendChild(sw);
+
+      const open = document.createElement("button");
+      open.className = "mopen";
       const who = document.createElement("b");
       who.textContent = (it.f || "有人") + " 写来的";
+      if (un) {
+        const dot = document.createElement("i");
+        dot.className = "dot";
+        who.appendChild(dot);
+      }
       const sub = document.createElement("small");
       sub.textContent = whenText(it.at) + " · " + (it.first || "…");
-      b.appendChild(who);
-      b.appendChild(sub);
-      b.onclick = () => openBoxLetter(it.id);
-      host.appendChild(b);
+      open.appendChild(who);
+      open.appendChild(sub);
+      open.onclick = () => openBoxLetterAt(idx);
+      row.appendChild(open);
+
+      const del = document.createElement("button");
+      del.className = "mdel";
+      del.textContent = "删";
+      del.onclick = () => delBoxLetter(it.id, del);
+      row.appendChild(del);
+
+      host.appendChild(row);
     });
+    updateBoxBadge(unread);
   }
-  async function openBox(){
-    if (!CLOUD) return;
-    const dlg = $("#boxDlg");
-    if (!dlg) return;
-    if (!dlg.open) dlg.showModal();
+
+  async function loadBox(){
     const addr = $("#boxAddr"), list = $("#boxList");
-    if (!addr || !list) return;
+    if (!CLOUD || !addr || !list) return;
     addr.value = "登记中…";
     list.innerHTML = "<p class='hint'>正在取…</p>";
     try {
@@ -2539,25 +2672,92 @@
       list.innerHTML = "<p class='hint'>连不上，等会儿再试。</p>";
     }
   }
-  async function openBoxLetter(id){
+  async function openBox(){
+    if (!CLOUD) return;
+    const dlg = $("#boxDlg");
+    if (!dlg) return;
+    if (!dlg.open) dlg.showModal();
+    await loadBox();
+  }
+  async function fetchLetter(id){
+    const r = await fetch(CLOUD + "/api/get?id=" + id);
+    if (!r.ok) throw new Error("gone");
+    const d = await r.json();
+    if (!d || !d.b) throw new Error("empty");
+    return d;
+  }
+  async function openBoxLetterAt(i){
+    const it = boxItems[i];
+    if (!it) return;
     try {
-      const r = await fetch(CLOUD + "/api/get?id=" + id);
-      if (!r.ok) throw new Error("gone");
-      const d = await r.json();
-      if (!d || !d.b) throw new Error("empty");
+      const d = await fetchLetter(it.id);
+      boxIndex = i;
+      markRead(it.id);
       const dlg = $("#boxDlg");
-      if (dlg) dlg.close();
+      if (dlg && dlg.open) dlg.close();
       document.body.classList.remove("open");
       queueLetter(d, true);
       resetEnv();
       document.body.classList.add("sending");
       readFromBox = true;
     } catch (e) {
-      alert("这封信取不到了，也许它已经过期。");
+      say("这封信取不到了，也许它已经过期。", null, 6000);
     }
   }
+  async function stepBox(dir){
+    const i = boxIndex + dir;
+    if (i < 0 || i >= boxItems.length) return;
+    try {
+      const d = await fetchLetter(boxItems[i].id);
+      boxIndex = i;
+      markRead(boxItems[i].id);
+      letter = d;
+      document.body.classList.add("sending", "letterReading");
+      document.body.classList.remove("inboxmode");
+      buildSheet();
+      updateNav();
+    } catch (e) {
+      say("这封信取不到了，也许它已经过期。", null, 6000);
+    }
+  }
+  function updateNav(){
+    const nav = $("#boxNav");
+    if (!nav) return;
+    nav.style.display = readFromBox ? "flex" : "none";
+    const t = $("#boxNavText");
+    if (t) t.textContent = boxIndex >= 0 ? (boxIndex + 1) + " / " + boxItems.length : "";
+    const prev = $("#boxPrev"), next = $("#boxNext");
+    if (prev) prev.disabled = boxIndex <= 0;
+    if (next) next.disabled = boxIndex >= boxItems.length - 1;
+  }
+  async function delBoxLetter(id, btn){
+    if (!btn) return;
+    if (btn.dataset.armed !== "1") {
+      btn.dataset.armed = "1";
+      btn.textContent = "确定？";
+      setTimeout(() => {
+        if (btn.dataset.armed === "1") { btn.dataset.armed = ""; btn.textContent = "删"; }
+      }, 3000);
+      return;
+    }
+    try {
+      const r = await fetch(CLOUD + "/api/letter/" + id + "?box=" + boxKey(), { method: "DELETE" });
+      if (!r.ok) throw new Error("del failed");
+      boxItems = boxItems.filter(x => x.id !== id);
+      renderBoxList(boxItems);
+      say("删掉了。", null, 5000);
+    } catch (e) {
+      btn.dataset.armed = "";
+      btn.textContent = "删";
+      say("没删掉，等会儿再试。", null, 6000);
+    }
+  }
+  {
+    const prev = $("#boxPrev"), next = $("#boxNext");
+    if (prev) prev.onclick = () => stepBox(-1);
+    if (next) next.onclick = () => stepBox(1);
+  }
   /* ---------- 收信地址模式：只留一个「寄出」 ---------- */
-  const ENV_COLOR = { cream: "#efe7d6", kraft: "#d9bd92", navy: "#303b4d" };
   function paintInboxLook(){
     const ed = $("#editor");
     const f = LET_FONTS[look.k] || LET_FONTS.wenkai;
@@ -2631,6 +2831,7 @@
   }
 
   if (CLOUD) {
+    setTimeout(() => { try { refreshBadge(); } catch (e) {} }, 1200);
     const btnBox = $("#btnBox");
     if (btnBox) {
       btnBox.style.display = "";
