@@ -862,6 +862,7 @@
       <div class="row">
         <button class="chip" id="btnPost">寄出去</button>
         <button class="chip" id="btnBox" style="display:none">收信箱</button>
+        <button class="chip" id="btnOpenLink">打开链接</button>
         <button class="chip" id="btnLetter">导出 .html</button>
         <button class="chip" id="btnDelete">先放回收站</button>
       </div>
@@ -910,6 +911,17 @@
   <div class="dact">
     <button id="lCancel">算了</button>
     <button id="lMake" class="primary">生成</button>
+  </div>
+</dialog>
+
+<dialog id="linkDlg">
+  <h3>打开一个链接</h3>
+  <p class="tip">把收到的链接整段粘进来。旧地址打不开也没关系，这里会换到现在的地址去读。</p>
+  <label for="linkInput">链接</label>
+  <input id="linkInput" placeholder="https://…/#id=…&amp;k=…" spellcheck="false">
+  <div class="dact">
+    <button id="linkCancel">算了</button>
+    <button id="linkOpen" class="primary">打开</button>
   </div>
 </dialog>
 
@@ -2929,8 +2941,9 @@ body::after{content:'';position:fixed;inset:0;pointer-events:none;z-index:9;opac
   /* 把公钥挂到收信地址上；老信箱在这里升级 */
   async function publishPk(){
     if (!CLOUD || !boxPub || !hasCrypto()) return;
+    const hostTag = String(CLOUD).replace(/^https?:\/\//, "");
     try {
-      if (localStorage.getItem("post.pkpub") === boxPub) return;
+      if (localStorage.getItem("post.pkpub") === boxPub + "@" + hostTag) return;
     } catch (e) {}
     try {
       const id = await ensureIdentity();
@@ -2939,7 +2952,7 @@ body::after{content:'';position:fixed;inset:0;pointer-events:none;z-index:9;opac
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ box: boxKey(), pub: boxPub, pk: id.p })
       });
-      try { localStorage.setItem("post.pkpub", boxPub); } catch (e) {}
+      try { localStorage.setItem("post.pkpub", boxPub + "@" + String(CLOUD).replace(/^https?:\/\//, "")); } catch (e) {}
     } catch (e) {}
   }
 
@@ -3220,6 +3233,7 @@ body::after{content:'';position:fixed;inset:0;pointer-events:none;z-index:9;opac
   async function openBox(){
     if (!CLOUD) return;
     document.body.classList.add("boxOpen");
+    try { await publishPk(); } catch (e) {}   // 换过后端时把公钥补发一次
     await loadBox();
   }
   async function fetchLetter(id){
@@ -3435,6 +3449,26 @@ body::after{content:'';position:fixed;inset:0;pointer-events:none;z-index:9;opac
 
   /* ---------- 启动：如果是收信链接 ---------- */
   const hash = location.hash.slice(1);
+  /* 打开别人发来的链接：旧域名打不开也没关系，取 # 后面的部分，换到现在的地址读 */
+  (function(){
+    const dlg = document.getElementById("linkDlg");
+    if (!dlg) return;
+    const input = document.getElementById("linkInput");
+    const open = () => { dlg.showModal(); input.value = ""; setTimeout(() => input.focus(), 60); };
+    document.getElementById("btnOpenLink").addEventListener("click", open);
+    document.getElementById("linkCancel").addEventListener("click", () => dlg.close());
+    document.getElementById("linkOpen").addEventListener("click", () => {
+      const raw = String(input.value || "").trim();
+      const m = raw.match(/#(.+)$/);
+      const frag = m ? m[1].trim() : raw;
+      if (!/^(id=|inbox=|[zp])/.test(frag)) { say("这不像一条连廊的链接。", null, 5000); return; }
+      dlg.close();
+      location.hash = frag;
+      location.reload();
+    });
+    input.addEventListener("keydown", (e) => { if (e.key === "Enter") document.getElementById("linkOpen").click(); });
+  })();
+
   if (hash && /^inbox=/.test(hash)) {
     const pub = hash.slice("inbox=".length).replace(/[^a-z0-9]/g, "");
     if (!CLOUD) {
