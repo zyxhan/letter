@@ -3476,23 +3476,42 @@ body::after{content:'';position:fixed;inset:0;pointer-events:none;z-index:9;opac
     const params = new URLSearchParams(hash);
     const id = (params.get("id") || "").replace(/[^a-z0-9]/g, "");
     const keyStr = params.get("k") || "";
-    const load = CLOUD
-      ? fetch(CLOUD + "/api/get?id=" + id).then(r => {
-          if (!r.ok) throw new Error("not found");
-          return r.json();
-        })
-      : Promise.reject(new Error("no cloud"));
-    load.then(async (data) => {
-      if (data && data.v === 1) {
-        if (!keyStr) throw new Error("no key");
-        data = await openRandom(data, keyStr);
+    // 连不上服务器时会重试几次；失败原因分开说，别一律说"信读不出来"
+    (async () => {
+      let last = null;
+      for (let i = 0; i < 3; i++) {
+        try {
+          if (!CLOUD) { const e = new Error("no cloud"); e.kind = "net"; throw e; }
+          const r = await fetch(CLOUD + "/api/get?id=" + id);
+          if (r.status === 404) { const e = new Error("gone"); e.kind = "gone"; throw e; }
+          if (!r.ok) { const e = new Error("HTTP " + r.status); e.kind = "net"; throw e; }
+          let data = await r.json();
+          if (data && data.v === 1) {
+            if (!keyStr) { const e = new Error("no key"); e.kind = "nokey"; throw e; }
+            data = await openRandom(data, keyStr);
+          }
+          queueLetter(data);
+          return;
+        } catch (e) {
+          last = e;
+          if (e && (e.kind === "gone" || e.kind === "nokey")) break;
+          const t = 900 + i * 800;
+          await new Promise((res) => setTimeout(res, t));
+        }
       }
-      queueLetter(data);
-    }).catch(() => {
       document.body.classList.remove("sending");
       history.replaceState(null, "", location.pathname);
-      alert("这封信读不出来了。也许它还没被寄出，或者链接不完整（密钥在 # 后面，别漏掉）。");
-    });
+      const kind = last && last.kind;
+      if (kind === "gone") {
+        alert("这封信不在了——可能已经被删掉，或者链接里的 id 被截断了。");
+      } else if (kind === "nokey") {
+        alert("链接里少了密钥（# 后面的 &k=…）。复制的时候要整段复制。");
+      } else if (last && /Operation|DataError/.test(last.name || "")) {
+        alert("这封信解不开——密钥不对，或者链接被改过。");
+      } else {
+        alert("连不上服务器，跟这封信没关系。可能是网络或线路的问题，过一会儿再点一次这个链接。");
+      }
+    })();
   } else if (hash && /^[zp]/.test(hash)) {
     document.body.classList.add("sending");
     unpack(hash).then(data => {
