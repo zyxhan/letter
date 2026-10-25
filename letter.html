@@ -2140,8 +2140,8 @@ body::after{content:'';position:fixed;inset:0;pointer-events:none;z-index:9;opac
 (function(){
   "use strict";
   const $ = s => document.querySelector(s);
-  const HOSTED = "https://zyxhan.github.io/letter/";   // lianlang.top 被按域名封锁，先用 GitHub Pages 发链接
-  const CLOUD = "https://letter.lianlang.top"; // 部署好 Cloudflare 之后填这里，例如 https://lianlang.xxx.workers.dev
+  const HOSTED = "https://zyxhan.github.io/letter/";   // 应用走 GitHub Pages；接口走阿里云函数计算
+  const CLOUD = "https://lianlang-gxhavxeern.cn-hangzhou.fcapp.run";   // 阿里云函数计算（Cloudflare 那个域名被墙了） // 部署好 Cloudflare 之后填这里，例如 https://lianlang.xxx.workers.dev
   let letter = null, muted = false, busy = false;
   let inboxPub = "", readFromBox = false;
   // 提示条定义在第一段脚本里，那边把它挂到了 window 上
