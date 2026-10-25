@@ -2140,7 +2140,7 @@ body::after{content:'';position:fixed;inset:0;pointer-events:none;z-index:9;opac
 (function(){
   "use strict";
   const $ = s => document.querySelector(s);
-  const HOSTED = "https://letter.lianlang.top/";
+  const HOSTED = "https://zyxhan.github.io/letter/";   // lianlang.top 被按域名封锁，先用 GitHub Pages 发链接
   const CLOUD = "https://letter.lianlang.top"; // 部署好 Cloudflare 之后填这里，例如 https://lianlang.xxx.workers.dev
   let letter = null, muted = false, busy = false;
   let inboxPub = "", readFromBox = false;
