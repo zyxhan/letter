@@ -953,6 +953,19 @@ body.holeMode header #btnDrawer{display:none!important}
   .hfab{bottom:max(34px, env(safe-area-inset-bottom))}
 }
 </style>
+
+<style>
+/* 卡片底部：时间 + 回复入口 */
+.hfoot{display:flex;align-items:center;gap:14px;margin-top:2px}
+.hfoot .hmeta{flex:1;margin:0}
+.hmini{
+  font:inherit;font-size:12.5px;letter-spacing:.1em;cursor:pointer;flex:none;
+  background:rgba(255,255,255,.9);border:1px solid #cfdbef;border-radius:22px;
+  color:#3f5177;padding:7px 15px;transition:.18s;
+}
+.hmini:hover{border-color:#9fb2d6;background:#f2f7ff;color:#2f4574}
+.hmini:active{transform:scale(.97)}
+</style>
 </head>
 <body>
 <div id="light" aria-hidden="true"></div>
@@ -3825,7 +3838,16 @@ body::after{content:'';position:fixed;inset:0;pointer-events:none;z-index:9;opac
         im.alt = "";
         el.appendChild(im);
       }
-      el.appendChild(metaOf(it));
+      const foot = document.createElement("div");
+      foot.className = "hfoot";
+      foot.appendChild(metaOf(it));
+      const replyBtn = document.createElement("button");
+      replyBtn.className = "hmini";
+      replyBtn.type = "button";
+      replyBtn.textContent = (it.n ? "看回复 / 回一句" : "回一句") + " →";
+      replyBtn.addEventListener("click", (ev) => { ev.stopPropagation(); openPost(it.id, true); });
+      foot.appendChild(replyBtn);
+      el.appendChild(foot);
       el.addEventListener("click", () => openPost(it.id));
       return el;
     }
@@ -3889,7 +3911,7 @@ body::after{content:'';position:fixed;inset:0;pointer-events:none;z-index:9;opac
       }
     }
 
-    async function openPost(id){
+    async function openPost(id, focusReply){
       openId = id;
       $("#hpost").textContent = "正在取…";
       $("#hreplies").textContent = "";
@@ -3915,8 +3937,17 @@ body::after{content:'';position:fixed;inset:0;pointer-events:none;z-index:9;opac
           d.appendChild(who); d.appendChild(b); rl.appendChild(d);
         });
         if (!(j.replies || []).length) {
-          const e = document.createElement("div"); e.className = "hempty"; e.textContent = "还没有人回。";
+          const e = document.createElement("div"); e.className = "hempty"; e.textContent = "还没有人回。你可以做第一个。";
           rl.appendChild(e);
+        }
+        if (focusReply) {
+          setTimeout(() => {
+            const box = $("#hreply");
+            if (box) {
+              box.scrollIntoView({ block: "center", behavior: "smooth" });
+              box.focus();
+            }
+          }, 260);
         }
       } catch (e) { $("#hpost").textContent = e.message; }
     }
