@@ -25,6 +25,10 @@
     --bg:#e6e9e0; --desk:#dde0d6; --paper:#f1f3ea; --ink:#2b322c; --muted:#8a928a;
     --line:rgba(43,50,44,.10); --accent:#6f8468;
   }
+  html[data-theme="frost"]{
+    --bg:#dfe8f7; --desk:#d4e0f3; --paper:#f2f7ff; --ink:#22304e; --muted:#8492b0;
+    --line:rgba(34,48,78,.11); --accent:#3b5287;
+  }
   html[data-theme="plain"]{
     --bg:#f1f1ef; --desk:#e8e8e6; --paper:#fbfbfa; --ink:#1b1b1a; --muted:#8d8d88;
     --line:rgba(0,0,0,.16); --accent:#1b1b1a;
@@ -733,6 +737,210 @@
     #reader p{ orphans:2; widows:2; }
   }
 </style>
+</style>
+</style>
+
+<style>
+/* ---------- 树洞：冷蓝白（独立空间） ---------- */
+body.holeMode{overflow:hidden;background:#eef3fb}
+body.holeMode #bar,
+body.holeMode main,
+body.holeMode footer,
+body.holeMode #drawer,
+body.holeMode #scrim,
+body.holeMode #boxPanel{display:none!important}
+
+#holeSpace{
+  position:fixed;inset:0;z-index:80;display:none;overflow:hidden;
+  color:#23314f;
+  font-family:"LXGW WenKai","KaiTi","STKaiti","Kaiti SC","楷体",serif;
+  background:
+    radial-gradient(120% 60% at 50% -10%, #dfe8f8 0%, rgba(223,232,248,0) 60%),
+    linear-gradient(180deg,#e9effa 0%, #f4f7fd 34%, #fbfcfe 68%, #ffffff 100%);
+}
+#holeSpace.on{display:block;animation:holeIn .45s cubic-bezier(.2,.8,.25,1)}
+@keyframes holeIn{from{opacity:0;transform:scale(.99)}to{opacity:1;transform:none}}
+
+/* 雪点 / 微光 */
+#holeSpace::before{
+  content:'';position:absolute;inset:0;pointer-events:none;z-index:0;
+  background-image:
+    radial-gradient(circle, rgba(96,126,190,.20) 1px, transparent 1.4px),
+    radial-gradient(circle, rgba(150,175,220,.14) 1px, transparent 1.4px);
+  background-size:34px 34px, 61px 61px;
+  background-position:0 0, 17px 23px;
+  opacity:.55;
+}
+#holeSpace::after{
+  content:'';position:absolute;left:0;right:0;top:0;height:22vh;pointer-events:none;z-index:0;
+  background:linear-gradient(180deg, rgba(118,144,200,.13), rgba(118,144,200,0));
+}
+
+.hv{position:absolute;inset:0;z-index:1;display:none;overflow-y:auto;overscroll-behavior:contain;
+  -webkit-overflow-scrolling:touch}
+.hv.on{display:block;animation:hvIn .32s ease}
+@keyframes hvIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+
+.hw{max-width:760px;margin:0 auto;padding:26px 22px 160px}
+
+.hh{display:flex;align-items:flex-start;justify-content:space-between;gap:14px;margin-bottom:26px}
+.hh h2{font-size:23px;letter-spacing:.3em;margin:0;font-weight:400;color:#1e2c4c}
+.hh p{font-size:12px;color:#7f8dab;letter-spacing:.16em;margin:9px 0 0}
+.hx{font:inherit;font-size:13px;letter-spacing:.12em;cursor:pointer;flex:none;
+  background:rgba(255,255,255,.7);border:1px solid #d5deef;border-radius:22px;color:#5a6b8d;padding:8px 20px}
+.hx:hover{border-color:#9fb2d6;color:#2f4574}
+
+.hlist{display:flex;flex-direction:column;gap:18px}
+.hcard{
+  background:rgba(255,255,255,.88);
+  border:1px solid #dfe7f5;border-radius:16px;padding:22px 24px;
+  cursor:pointer;backdrop-filter:blur(6px);
+  transition:transform .18s ease,border-color .18s ease,box-shadow .18s ease;
+  box-shadow:0 8px 24px rgba(64,92,150,.08), 0 1px 2px rgba(64,92,150,.06);
+}
+.hcard:hover{transform:translateY(-2px);border-color:#c3d1ea;box-shadow:0 16px 34px rgba(64,92,150,.14)}
+.hcard p{white-space:pre-wrap;word-break:break-word;margin:0 0 14px;
+  font-size:18px;line-height:2;color:#23314f}
+.hcard img{display:block;max-width:100%;border-radius:12px;margin:0 0 14px}
+.hmeta{display:flex;align-items:center;gap:16px;font-size:12px;color:#8593b0;letter-spacing:.1em}
+.hmeta .r{color:#546fb0}
+.hempty{text-align:center;color:#9aa7c2;padding:64px 0;font-size:14px;letter-spacing:.12em}
+
+.hbtn{font:inherit;font-size:14px;letter-spacing:.1em;cursor:pointer;
+  background:rgba(255,255,255,.9);border:1px solid #d8e1f2;border-radius:10px;color:#46577e;padding:10px 20px}
+.hbtn:hover{border-color:#a8bad9}
+.hbtn.primary{
+  background:linear-gradient(165deg,#3c5488,#25365c);
+  border-color:#25365c;color:#f4f7ff;
+  box-shadow:0 8px 20px rgba(42,62,104,.28);
+}
+.hbtn.primary:disabled{opacity:.45;cursor:default;box-shadow:none}
+.hmore{display:block;margin:28px auto 0}
+
+.hfab{position:fixed;right:22px;bottom:26px;z-index:82;
+  font:inherit;font-size:15px;letter-spacing:.14em;
+  background:linear-gradient(165deg,#3c5488,#22314f);
+  color:#f4f7ff;border:0;border-radius:30px;padding:15px 28px;cursor:pointer;
+  box-shadow:0 14px 34px rgba(38,56,96,.34), 0 2px 6px rgba(38,56,96,.24)}
+.hfab:hover{transform:translateY(-2px)}
+.hfab:active{transform:translateY(0)}
+
+.hbox{
+  background:rgba(255,255,255,.9);
+  border:1px solid #dfe7f5;border-radius:16px;padding:22px 24px;
+  box-shadow:0 10px 30px rgba(64,92,150,.10);backdrop-filter:blur(6px);
+}
+.hbox textarea{
+  width:100%;min-height:min(42vh,320px);border:0;background:transparent;resize:vertical;outline:none;
+  font:inherit;font-size:18px;line-height:2;color:#23314f;padding:0}
+.hbox textarea::placeholder{color:#a9b6cf}
+.hrow{display:flex;align-items:center;gap:12px;margin-top:16px}
+.hrow .sp{flex:1}
+.hcount{font-size:12px;color:#9aa7c2;letter-spacing:.08em}
+.hthumb{display:none;margin-top:16px;position:relative;width:max-content}
+.hthumb.on{display:block}
+.hthumb img{display:block;max-height:240px;border-radius:12px;border:1px solid #dfe7f5}
+.hthumb button{position:absolute;top:-10px;right:-10px;width:30px;height:30px;border-radius:50%;
+  border:0;background:#22314f;color:#fff;cursor:pointer;font-size:16px;line-height:30px;padding:0}
+
+.hpost{
+  background:rgba(255,255,255,.92);border:1px solid #dfe7f5;border-radius:16px;padding:24px 26px;
+  box-shadow:0 10px 30px rgba(64,92,150,.10);backdrop-filter:blur(6px);
+}
+.hpost p{white-space:pre-wrap;word-break:break-word;margin:0 0 14px;font-size:18px;line-height:2;color:#23314f}
+.hpost img{display:block;max-width:100%;border-radius:12px;margin:0 0 14px}
+.hreplies{margin-top:22px;display:flex;flex-direction:column;gap:14px}
+.hreply{
+  background:rgba(246,249,255,.92);border:1px solid #e3eaf7;border-radius:14px;padding:16px 20px;
+  font-size:16px;line-height:1.95;color:#3d4d6d;white-space:pre-wrap;word-break:break-word;
+}
+.hreply .who{font-size:11px;color:#93a1bd;letter-spacing:.14em;margin-bottom:6px}
+.hreplybox{margin-top:22px;display:flex;gap:12px;align-items:flex-end}
+.hreplybox textarea{
+  flex:1;min-height:56px;max-height:160px;border:1px solid #d8e1f2;border-radius:14px;
+  background:rgba(255,255,255,.95);padding:14px 16px;font:inherit;font-size:16px;line-height:1.8;
+  resize:vertical;outline:none;color:#23314f}
+.hreplybox textarea::placeholder{color:#a9b6cf}
+.hreplybox textarea:focus{border-color:#a8bad9;box-shadow:0 0 0 3px rgba(120,150,210,.12)}
+
+.htip{position:fixed;left:0;right:0;bottom:0;padding:12px 20px 18px;text-align:center;
+  font-size:11px;letter-spacing:.3em;color:#9aa7c2;z-index:81;pointer-events:none;display:none}
+body.holeMode .htip{display:block}
+</style>
+
+<style>
+/* 一条一屏 */
+.hw-one{display:flex;flex-direction:column;min-height:calc(100dvh - 40px);padding-bottom:130px}
+.hstage{flex:1;display:flex;align-items:center;justify-content:center;padding:8px 0 26px}
+.hbig{
+  position:relative;
+  width:100%;max-width:640px;min-height:260px;
+  display:flex;flex-direction:column;justify-content:center;
+  background:rgba(255,255,255,.93);border:1px solid #dfe7f5;border-radius:20px;
+  padding:44px 38px;cursor:pointer;
+  box-shadow:0 18px 52px rgba(64,92,150,.15), 0 2px 6px rgba(64,92,150,.06);
+  animation:hbigIn .38s cubic-bezier(.2,.8,.25,1);
+}
+.hbig::before{
+  content:'“';position:absolute;left:24px;top:10px;
+  font-family:Georgia,"Times New Roman",serif;font-size:64px;line-height:1;
+  color:#d3dff1;pointer-events:none;
+}
+@keyframes hbigIn{from{opacity:0;transform:translateY(12px) scale(.99)}to{opacity:1;transform:none}}
+.hbig p{white-space:pre-wrap;word-break:break-word;margin:0 0 24px;
+  font-size:21px;line-height:1.95;color:#23314f}
+.hbig img{display:block;max-width:100%;border-radius:14px;margin:0 0 24px}
+.hbig .hmeta{font-size:12.5px}
+.hnav{display:flex;align-items:center;justify-content:center;gap:18px;margin-top:20px;flex-wrap:wrap}
+.hnext{font-size:15.5px;padding:15px 40px;border-radius:32px;letter-spacing:.14em}
+.hseen{font-size:12px;color:#93a1bd;letter-spacing:.12em}
+.hdone{width:100%;max-width:640px;text-align:center;padding:56px 24px;
+  background:rgba(255,255,255,.8);border:1px dashed #cfdbef;border-radius:20px;color:#7f8dab}
+.hdone h3{margin:0 0 10px;font-size:17px;font-weight:400;letter-spacing:.16em;color:#3f5177}
+.hdone p{margin:0 0 20px;font-size:13px;letter-spacing:.1em}
+</style>
+
+<style>
+/* 左上角那颗：做成看得出来是按钮 */
+header #btnDrawer{
+  display:inline-flex;align-items:center;gap:8px;
+  padding:7px 14px 7px 12px!important;
+  border:1px solid var(--line);border-radius:9px;
+  background:rgba(125,115,100,.07);
+  letter-spacing:.1em;
+  transition:background .18s ease,border-color .18s ease,transform .18s ease;
+}
+header #btnDrawer::before{
+  content:'';width:13px;height:11px;flex:none;
+  background:
+    linear-gradient(currentColor,currentColor) 0 0/100% 1.5px no-repeat,
+    linear-gradient(currentColor,currentColor) 0 50%/100% 1.5px no-repeat,
+    linear-gradient(currentColor,currentColor) 0 100%/100% 1.5px no-repeat;
+  opacity:.72;
+}
+header #btnDrawer:hover{background:rgba(125,115,100,.16);border-color:rgba(125,115,100,.38)}
+html[data-theme="night"] header #btnDrawer{background:rgba(255,255,255,.07);border-color:rgba(255,255,255,.16)}
+html[data-theme="night"] header #btnDrawer:hover{background:rgba(255,255,255,.13);border-color:rgba(255,255,255,.28)}
+header #btnDrawer:active{transform:scale(.97)}
+
+/* 一次性的小提示 */
+#drawerHint{
+  position:fixed;left:104px;top:11px;z-index:60;
+  background:#2f2a24;color:#f6efe3;
+  font-size:12px;letter-spacing:.08em;line-height:1.6;
+  padding:8px 13px;border-radius:8px;white-space:nowrap;
+  box-shadow:0 10px 24px rgba(0,0,0,.22);border:1px solid rgba(255,255,255,.10);
+  opacity:0;transform:translateY(-6px);pointer-events:none;
+  transition:opacity .4s ease,transform .4s ease;
+}
+#drawerHint.on{opacity:1;transform:none}
+#drawerHint::before{
+  content:'';position:absolute;left:-5px;top:50%;margin-top:-5px;width:10px;height:10px;
+  background:inherit;transform:rotate(45deg);border-radius:2px;
+}
+body.holeMode #drawerHint,
+body.holeMode header #btnDrawer{display:none!important}
+</style>
 </head>
 <body>
 <div id="light" aria-hidden="true"></div>
@@ -784,6 +992,7 @@
   <button id="btnTidy" title="收拾标点和空行">收拾</button>
   <button id="btnLetterTop" title="导成信，给某个具体的人看">导成信</button>
   <button id="btnRead" title="阅读模式 (Ctrl+E)">阅读</button>
+  <button id="btnHole" title="树洞：匿名说点什么">树洞</button>
 </header>
 
 <main>
@@ -819,6 +1028,7 @@
       <h4>外观</h4>
       <div class="row" id="rowTheme">
         <button class="chip" data-theme="plain">素</button>
+        <button class="chip" data-theme="frost">霜</button>
         <button class="chip" data-theme="paper">叶隙</button>
         <button class="chip" data-theme="night">晚灯</button>
         <button class="chip" data-theme="olive">蝉声</button>
@@ -2105,6 +2315,73 @@ body::after{content:'';position:fixed;inset:0;pointer-events:none;z-index:9;opac
     <button id="pMake" class="primary">生成链接</button>
   </div>
 </dialog>
+
+
+
+<div id="holeSpace" aria-hidden="true">
+
+  <!-- 一：刷（一次一条） -->
+  <section class="hv on" id="hvFeed">
+    <div class="hw hw-one">
+      <header class="hh">
+        <div><h2>树洞</h2><p>每天两条 · 随机给你</p></div>
+        <div style="display:flex;gap:8px;flex:none">
+          <button class="hx" data-hclose>关</button>
+        </div>
+      </header>
+      <div class="hstage" id="hstage"></div>
+      <div class="hnav">
+        <button class="hbtn primary hnext" id="hnext">下一个 →</button>
+        <span class="hseen" id="hseen"></span>
+      </div>
+    </div>
+    <button class="hfab" id="hnew">＋ 说点什么</button>
+    <div class="htip">← 浏览器返回，就回到写信</div>
+  </section>
+
+  <!-- 二：写 -->
+  <section class="hv" id="hvWrite">
+    <div class="hw">
+      <header class="hh">
+        <div><h2>说点什么</h2><p>匿名的 · 写完就发</p></div>
+        <button class="hx" id="hwriteCancel">取消</button>
+      </header>
+      <div class="hbox">
+        <textarea id="hwriteText" maxlength="2000" placeholder="今天有什么想说的？"></textarea>
+        <div class="hthumb" id="hthumb">
+          <img id="hthumbImg" alt="">
+          <button id="hthumbX" title="去掉">×</button>
+        </div>
+        <div class="hrow">
+          <button class="hbtn" id="hpick">图片</button>
+          <span class="hcount" id="hcount"></span>
+          <span class="sp"></span>
+          <button class="hbtn primary" id="hsend">发出去</button>
+        </div>
+      </div>
+    </div>
+    <input type="file" id="hfile" accept="image/*" hidden>
+    <div class="htip">← 浏览器返回，就回到刷</div>
+  </section>
+
+  <!-- 三：看一条 -->
+  <section class="hv" id="hvOne">
+    <div class="hw">
+      <header class="hh">
+        <div><h2>这一条</h2><p id="honemeta"></p></div>
+        <button class="hx" id="hback">返回</button>
+      </header>
+      <div class="hpost" id="hpost"></div>
+      <div class="hreplies" id="hreplies"></div>
+      <div class="hreplybox">
+        <textarea id="hreply" maxlength="600" placeholder="回一句…"></textarea>
+        <button class="hbtn primary" id="hreplySend">回复</button>
+      </div>
+    </div>
+    <div class="htip">← 浏览器返回，就回到刷</div>
+  </section>
+
+</div>
 
 <div id="boxPanel">
   <div class="binner">
@@ -3449,6 +3726,298 @@ body::after{content:'';position:fixed;inset:0;pointer-events:none;z-index:9;opac
 
   /* ---------- 启动：如果是收信链接 ---------- */
   const hash = location.hash.slice(1);
+
+
+  /* ---------- 树洞：一次一条 / 写 / 看一条 ---------- */
+  (function(){
+    const space = $("#holeSpace");
+    if (!space) return;
+    const views = { feed: $("#hvFeed"), write: $("#hvWrite"), one: $("#hvOne") };
+    const stage = $("#hstage"), nextBtn = $("#hnext"), seenLabel = $("#hseen");
+    const wtext = $("#hwriteText"), sendBtn = $("#hsend"), countEl = $("#hcount");
+    const thumb = $("#hthumb"), thumbImg = $("#hthumbImg"), fileInput = $("#hfile");
+    const QUOTA = 2;
+    const seen = new Set();
+    let loading = false, imgData = "", openId = "", done = false;
+
+    /* 每天两条：记在本地，跨天自动重置 */
+    function todayKey(){
+      const d = new Date();
+      return d.getFullYear() + "-" + (d.getMonth() + 1) + "-" + d.getDate();
+    }
+    function loadDay(){
+      try {
+        const j = JSON.parse(localStorage.getItem("hole.day") || "null");
+        if (j && j.d === todayKey() && Array.isArray(j.ids)) return j;
+      } catch (e) {}
+      return { d: todayKey(), ids: [] };
+    }
+    function saveDay(j){
+      try { localStorage.setItem("hole.day", JSON.stringify(j)); } catch (e) {}
+    }
+    let day = loadDay();
+    function leftToday(){ return Math.max(0, QUOTA - day.ids.length); }
+
+    function when(t){
+      const d = new Date(t || Date.now());
+      const diff = (Date.now() - (t || Date.now())) / 1000;
+      if (diff < 60) return "刚刚";
+      if (diff < 3600) return Math.floor(diff / 60) + " 分钟前";
+      if (diff < 86400) return Math.floor(diff / 3600) + " 小时前";
+      return (d.getMonth() + 1) + " 月 " + d.getDate() + " 日";
+    }
+
+    async function api(path, opt){
+      const r = await fetch(CLOUD + path, opt);
+      let j = null;
+      try { j = await r.json(); } catch (e) {}
+      if (!r.ok) throw new Error((j && j.error) || "出错了，等会儿再试");
+      return j || {};
+    }
+
+    function show(name){
+      Object.keys(views).forEach((k) => views[k].classList.toggle("on", k === name));
+      if (views[name]) views[name].scrollTop = 0;
+      try { history.replaceState(null, "", name === "feed" ? "#hole" : "#hole/" + name); } catch (e) {}
+    }
+
+    function metaOf(it){
+      const meta = document.createElement("div");
+      meta.className = "hmeta";
+      const t = document.createElement("span");
+      t.textContent = when(it.at);
+      meta.appendChild(t);
+      if (it.n) {
+        const rn = document.createElement("span");
+        rn.className = "r";
+        rn.textContent = it.n + " 条回复";
+        meta.appendChild(rn);
+      }
+      return meta;
+    }
+
+    function bigCard(it){
+      const el = document.createElement("div");
+      el.className = "hbig";
+      if (it.b) { const p = document.createElement("p"); p.textContent = it.b; el.appendChild(p); }
+      if (it.img) {
+        const im = document.createElement("img");
+        im.src = CLOUD + "/api/img/" + it.id;
+        im.alt = "";
+        el.appendChild(im);
+      }
+      el.appendChild(metaOf(it));
+      el.addEventListener("click", () => openPost(it.id));
+      return el;
+    }
+
+    function doneCard(){
+      const el = document.createElement("div");
+      el.className = "hdone";
+      const h = document.createElement("h3");
+      h.textContent = "今天的两次看完了";
+      const p = document.createElement("p");
+      p.textContent = "明天 0 点再来。好东西不该一次看完。";
+      el.appendChild(h);
+      el.appendChild(p);
+      return el;
+    }
+
+    function paint(){
+      seenLabel.textContent = "今天还剩 " + leftToday() + " 次";
+      nextBtn.style.display = leftToday() > 0 ? "inline-block" : "none";
+    }
+
+    function showDone(){
+      stage.textContent = "";
+      stage.appendChild(doneCard());
+      paint();
+    }
+
+    async function nextRandom(){
+      if (loading) return;
+      if (leftToday() <= 0) { showDone(); return; }
+      loading = true;
+      nextBtn.disabled = true;
+      try {
+        const skip = [...seen, ...day.ids].join(",");
+        const j = await api("/api/hole?n=1" + (skip ? "&skip=" + encodeURIComponent(skip) : ""));
+        const it = (j.items || [])[0];
+        stage.textContent = "";
+        if (!it) {
+          const el = document.createElement("div");
+          el.className = "hdone";
+          const h = document.createElement("h3");
+          h.textContent = seen.size ? "都看过了" : "还没有人说话";
+          const p = document.createElement("p");
+          p.textContent = seen.size ? "换一天再来，说不定有新的人开口。" : "过两天再来看看。";
+          el.appendChild(h);
+          el.appendChild(p);
+          stage.appendChild(el);
+          paint();
+        } else {
+          seen.add(it.id);
+          day.ids.push(it.id);
+          saveDay(day);
+          stage.appendChild(bigCard(it));
+          paint();
+        }
+      } catch (e) {
+        say(e.message, null, 5000);
+      } finally {
+        loading = false;
+        nextBtn.disabled = false;
+      }
+    }
+
+    async function openPost(id){
+      openId = id;
+      $("#hpost").textContent = "正在取…";
+      $("#hreplies").textContent = "";
+      $("#honemeta").textContent = "";
+      show("one");
+      try {
+        const j = await api("/api/hole/" + id);
+        const box = $("#hpost");
+        box.textContent = "";
+        if (j.b) { const p = document.createElement("p"); p.textContent = j.b; box.appendChild(p); }
+        if (j.img) { const im = document.createElement("img"); im.src = CLOUD + "/api/img/" + id; im.alt = ""; box.appendChild(im); }
+        const meta = document.createElement("div");
+        meta.className = "hmeta";
+        const t = document.createElement("span"); t.textContent = when(j.at); meta.appendChild(t);
+        box.appendChild(meta);
+        $("#honemeta").textContent = (j.replies || []).length + " 条回复";
+        const rl = $("#hreplies");
+        (j.replies || []).forEach((r) => {
+          const d = document.createElement("div"); d.className = "hreply";
+          const who = document.createElement("div"); who.className = "who";
+          who.textContent = "匿名 · " + when(r.at);
+          const b = document.createElement("div"); b.textContent = r.b;
+          d.appendChild(who); d.appendChild(b); rl.appendChild(d);
+        });
+        if (!(j.replies || []).length) {
+          const e = document.createElement("div"); e.className = "hempty"; e.textContent = "还没有人回。";
+          rl.appendChild(e);
+        }
+      } catch (e) { $("#hpost").textContent = e.message; }
+    }
+
+    async function send(){
+      const text = (wtext.value || "").trim();
+      if (!text && !imgData) { say("写点什么再发吧。", null, 3000); return; }
+      sendBtn.disabled = true; sendBtn.textContent = "发送中…";
+      const keepImg = imgData;
+      try {
+        await api("/api/hole", {
+          method: "POST", headers: { "content-type": "application/json" },
+          body: JSON.stringify({ b: text, img: imgData || "" })
+        });
+        wtext.value = ""; clearImg(); updateCount();
+        show("feed");
+        // 自己刚发的，先摆上来
+        stage.textContent = "";
+        const mine = bigCard({ id: "mine-" + Date.now(), b: text, at: Date.now(), img: keepImg ? 1 : 0, n: 0 });
+        stage.appendChild(mine);
+        paint();
+        say("发出去了。", null, 2600);
+      } catch (e) { say(e.message, null, 5000); }
+      finally { sendBtn.disabled = false; sendBtn.textContent = "发出去"; }
+    }
+
+    async function reply(){
+      const box = $("#hreply");
+      const text = (box.value || "").trim();
+      if (!text || !openId) return;
+      const btn = $("#hreplySend");
+      btn.disabled = true;
+      try {
+        await api("/api/hole/" + openId + "/reply", {
+          method: "POST", headers: { "content-type": "application/json" },
+          body: JSON.stringify({ b: text })
+        });
+        box.value = "";
+        await openPost(openId);
+        say("回好了。", null, 2200);
+      } catch (e) { say(e.message, null, 5000); }
+      finally { btn.disabled = false; }
+    }
+
+    function clearImg(){ imgData = ""; thumb.classList.remove("on"); thumbImg.removeAttribute("src"); fileInput.value = ""; }
+    function updateCount(){ const n = (wtext.value || "").length; countEl.textContent = n ? n + " / 2000" : ""; }
+
+    function shrink(file){
+      return new Promise((resolve, reject) => {
+        const fr = new FileReader();
+        fr.onload = () => {
+          const im = new Image();
+          im.onload = () => {
+            try {
+              const max = 1080;
+              const k = Math.min(1, max / Math.max(im.width, im.height));
+              const c = document.createElement("canvas");
+              c.width = Math.round(im.width * k); c.height = Math.round(im.height * k);
+              c.getContext("2d").drawImage(im, 0, 0, c.width, c.height);
+              resolve(c.toDataURL("image/jpeg", 0.78));
+            } catch (e) { reject(e); }
+          };
+          im.onerror = reject; im.src = fr.result;
+        };
+        fr.onerror = reject; fr.readAsDataURL(file);
+      });
+    }
+
+    function enterHole(){
+      if (!CLOUD) { say("树洞要联网才能用。", null, 4000); return; }
+      if (space.classList.contains("on")) return;
+      document.body.classList.add("holeMode");
+      space.classList.add("on");
+      show("feed");
+      day = loadDay();
+      seen.clear();
+      if (leftToday() <= 0) { showDone(); }
+      else nextRandom();
+    }
+    function leaveHole(){
+      space.classList.remove("on");
+      document.body.classList.remove("holeMode");
+    }
+    window.__enterHole = enterHole;
+
+    nextBtn.addEventListener("click", () => nextRandom());
+    $("#hnew").addEventListener("click", () => show("write"));
+    $("#hwriteCancel").addEventListener("click", () => show("feed"));
+    $("#hback").addEventListener("click", () => { openId = ""; show("feed"); });
+    document.querySelectorAll("[data-hclose]").forEach((b) => b.addEventListener("click", () => {
+      leaveHole();
+      if (location.hash.indexOf("#hole") === 0) history.replaceState(null, "", location.pathname);
+    }));
+    sendBtn.addEventListener("click", send);
+    $("#hreplySend").addEventListener("click", reply);
+    wtext.addEventListener("input", updateCount);
+    $("#hpick").addEventListener("click", () => fileInput.click());
+    $("#hthumbX").addEventListener("click", clearImg);
+    fileInput.addEventListener("change", async () => {
+      const f = fileInput.files && fileInput.files[0];
+      if (!f) return;
+      try {
+        imgData = await shrink(f);
+        thumbImg.src = imgData;
+        thumb.classList.add("on");
+      } catch (e) { say("这张图读不了，换一张试试。", null, 4000); clearImg(); }
+    });
+
+    const openBtn = $("#btnHole");
+    if (openBtn) openBtn.addEventListener("click", () => enterHole());
+
+    window.addEventListener("hashchange", () => {
+      const h = location.hash || "";
+      if (h.indexOf("#hole") === 0) {
+        if (space.classList.contains("on")) { if (h === "#hole") show("feed"); }
+        else enterHole();
+      } else if (space.classList.contains("on")) leaveHole();
+    });
+  })();
+
   /* 打开别人发来的链接：旧域名打不开也没关系，取 # 后面的部分，换到现在的地址读 */
   (function(){
     const dlg = document.getElementById("linkDlg");
@@ -3469,7 +4038,9 @@ body::after{content:'';position:fixed;inset:0;pointer-events:none;z-index:9;opac
     input.addEventListener("keydown", (e) => { if (e.key === "Enter") document.getElementById("linkOpen").click(); });
   })();
 
-  if (hash && /^inbox=/.test(hash)) {
+  if (hash.indexOf("hole") === 0) {
+    setTimeout(() => { if (window.__enterHole) window.__enterHole(); }, 400);
+  } else if (hash && /^inbox=/.test(hash)) {
     const pub = hash.slice("inbox=".length).replace(/[^a-z0-9]/g, "");
     if (!CLOUD) {
       alert("这个收信地址还没接上云端。");
@@ -3558,5 +4129,32 @@ body::after{content:'';position:fixed;inset:0;pointer-events:none;z-index:9;opac
 })();
 </script>
 
+
+<div id="drawerHint">文章、设置都在这儿</div>
+<script>
+(function () {
+  var btn = document.getElementById("btnDrawer");
+  var hint = document.getElementById("drawerHint");
+  if (!btn || !hint) return;
+  var seen = false;
+  try { seen = localStorage.getItem("post.hint.drawer") === "1"; } catch (e) {}
+  if (seen) return;
+
+  var hideTimer = null;
+  function dismiss() {
+    hint.classList.remove("on");
+    if (hideTimer) clearTimeout(hideTimer);
+    try { localStorage.setItem("post.hint.drawer", "1"); } catch (e) {}
+  }
+  setTimeout(function () {
+    hint.classList.add("on");
+    hideTimer = setTimeout(dismiss, 7000);
+  }, 2000);
+  btn.addEventListener("click", dismiss);
+  document.addEventListener("keydown", function (e) {
+    if (e.key === "Escape") dismiss();
+  });
+})();
+</script>
 </body>
 </html>
