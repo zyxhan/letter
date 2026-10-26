@@ -967,6 +967,19 @@ body.holeMode header #btnDrawer{display:none!important}
 .hmini:hover{border-color:#9fb2d6;background:#f2f7ff;color:#2f4574}
 .hmini:active{transform:scale(.97)}
 </style>
+
+<style>
+.hmine{
+  display:block;width:100%;max-width:640px;margin:0 auto 16px;
+  font:inherit;font-size:13.5px;letter-spacing:.08em;text-align:center;cursor:pointer;
+  background:linear-gradient(165deg,#eef4ff,#e2ecfd);
+  border:1px solid #c9dbf7;border-radius:12px;color:#3f5177;
+  padding:12px 16px;transition:.18s;animation:hmineIn .4s ease;
+}
+.hmine:hover{border-color:#a9c2ea;background:linear-gradient(165deg,#e8f0ff,#dbe7fb)}
+.hmine b{font-weight:400;color:#2f4574}
+@keyframes hmineIn{from{opacity:0;transform:translateY(-6px)}to{opacity:1;transform:none}}
+</style>
 </head>
 <body>
 <div id="light" aria-hidden="true"></div>
@@ -2362,6 +2375,9 @@ body::after{content:'';position:fixed;inset:0;pointer-events:none;z-index:9;opac
           <button class="hx" data-hclose>关</button>
         </div>
       </header>
+      <button class="hmine" id="hmine" type="button" hidden>
+        你发的帖有新回复 <span id="hmineN"></span> · 点开看看 →
+      </button>
       <div class="hstage" id="hstage"></div>
       <div class="hnav">
         <button class="hbtn primary hnext" id="hnext">下一个 →</button>
@@ -3876,6 +3892,54 @@ body::after{content:'';position:fixed;inset:0;pointer-events:none;z-index:9;opac
       paint();
     }
 
+
+    /* 本机记住自己发过的帖，有新回复就提示 */
+    const MINE_KEY = "hole.mine";
+    function loadMine(){
+      try {
+        const j = JSON.parse(localStorage.getItem(MINE_KEY) || "[]");
+        return Array.isArray(j) ? j : [];
+      } catch (e) { return []; }
+    }
+    function saveMine(list){
+      try { localStorage.setItem(MINE_KEY, JSON.stringify(list.slice(-30))); } catch (e) {}
+    }
+    function rememberMine(id){
+      if (!id || id.indexOf("mine-") === 0) return;
+      const list = loadMine();
+      if (list.some((x) => x.id === id)) return;
+      list.push({ id: id, at: Date.now(), seen: 0 });
+      saveMine(list);
+    }
+    async function checkMine(){
+      const list = loadMine();
+      if (!list.length) return [];
+      const hits = [];
+      for (const item of list.slice(-12)) {
+        try {
+          const j = await api("/api/hole/" + item.id);
+          const n = (j.replies || []).length;
+          if (n > (item.seen || 0)) hits.push({ id: item.id, fresh: n - (item.seen || 0), n: n });
+        } catch (e) { /* 删了就算了 */ }
+      }
+      return hits;
+    }
+    let mineHits = [];
+    async function refreshMineBanner(){
+      const banner = $("#hmine");
+      if (!banner) return;
+      mineHits = await checkMine();
+      if (!mineHits.length) { banner.hidden = true; return; }
+      const total = mineHits.reduce((a, b) => a + b.fresh, 0);
+      $("#hmineN").textContent = total + " 条";
+      banner.hidden = false;
+    }
+    function markMineSeen(id, n){
+      const list = loadMine();
+      const it = list.find((x) => x.id === id);
+      if (it) { it.seen = n; saveMine(list); }
+    }
+
     async function nextRandom(){
       if (loading) return;
       if (leftToday() <= 0) { showDone(); return; }
@@ -3914,6 +3978,7 @@ body::after{content:'';position:fixed;inset:0;pointer-events:none;z-index:9;opac
 
     async function openPost(id, focusReply){
       openId = id;
+      try { const l = loadMine(); const it = l.find(x => x.id === id); if (it) setTimeout(() => refreshMineBanner(), 1200); } catch (e) {}
       $("#hpost").textContent = "正在取…";
       $("#hreplies").textContent = "";
       $("#honemeta").textContent = "";
@@ -3929,6 +3994,7 @@ body::after{content:'';position:fixed;inset:0;pointer-events:none;z-index:9;opac
         const t = document.createElement("span"); t.textContent = when(j.at); meta.appendChild(t);
         box.appendChild(meta);
         $("#honemeta").textContent = (j.replies || []).length + " 条回复";
+        markMineSeen(id, (j.replies || []).length);
         const rl = $("#hreplies");
         (j.replies || []).forEach((r) => {
           const d = document.createElement("div"); d.className = "hreply";
@@ -3967,7 +4033,7 @@ body::after{content:'';position:fixed;inset:0;pointer-events:none;z-index:9;opac
         show("feed");
         // 自己刚发的：直接摆上来，并且记进 seen（以后随机也不会再推给自己、不占名额）
         const realId = (res && res.id) || "";
-        if (realId) seen.add(realId);
+        if (realId) { seen.add(realId); rememberMine(realId); }
         stage.textContent = "";
         const mine = bigCard({ id: realId || ("mine-" + Date.now()), b: text, at: Date.now(), img: keepImg ? 1 : 0, n: 0 });
         stage.appendChild(mine);
@@ -4029,6 +4095,7 @@ body::after{content:'';position:fixed;inset:0;pointer-events:none;z-index:9;opac
       seen.clear();
       if (leftToday() <= 0) { showDone(); }
       else nextRandom();
+      refreshMineBanner();
     }
     function leaveHole(){
       space.classList.remove("on");
@@ -4037,6 +4104,11 @@ body::after{content:'';position:fixed;inset:0;pointer-events:none;z-index:9;opac
     window.__enterHole = enterHole;
 
     nextBtn.addEventListener("click", () => nextRandom());
+    const mineBtn = $("#hmine");
+    if (mineBtn) mineBtn.addEventListener("click", () => {
+      const first = mineHits[0];
+      if (first) openPost(first.id);
+    });
     $("#hnew").addEventListener("click", () => show("write"));
     $("#hwriteCancel").addEventListener("click", () => show("feed"));
     $("#hback").addEventListener("click", () => { openId = ""; show("feed"); });
