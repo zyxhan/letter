@@ -981,6 +981,16 @@ body.holeMode header #btnDrawer{display:none!important}
 .hmine b{font-weight:400;color:#2f4574}
 @keyframes hmineIn{from{opacity:0;transform:translateY(-6px)}to{opacity:1;transform:none}}
 </style>
+
+<style>
+.hrow2{display:flex;flex-direction:column;gap:8px;background:rgba(255,255,255,.9);
+  border:1px solid #dfe7f5;border-radius:14px;padding:16px 18px;cursor:pointer;transition:.18s}
+.hrow2:hover{border-color:#c3d1ea;box-shadow:0 10px 24px rgba(64,92,150,.10)}
+.hrow2 p{margin:0;font-size:16px;line-height:1.85;color:#23314f;
+  display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;white-space:pre-wrap}
+.hrow2 .m{display:flex;align-items:center;gap:12px;font-size:12px;color:#8593b0;letter-spacing:.08em}
+.hrow2 .m .new{color:#3d6bb3;background:#e8f0fd;border-radius:10px;padding:2px 9px}
+</style>
 </head>
 <body>
 <div id="light" aria-hidden="true"></div>
@@ -2373,6 +2383,7 @@ body::after{content:'';position:fixed;inset:0;pointer-events:none;z-index:9;opac
       <header class="hh">
         <div><h2>树洞</h2><p>每天两条 · 随机给你</p></div>
         <div style="display:flex;gap:8px;flex:none">
+          <button class="hx" id="hmineOpen">我发的</button>
           <button class="hx" data-hclose>关</button>
         </div>
       </header>
@@ -2411,6 +2422,18 @@ body::after{content:'';position:fixed;inset:0;pointer-events:none;z-index:9;opac
       </div>
     </div>
     <input type="file" id="hfile" accept="image/*" hidden>
+    <div class="htip">← 浏览器返回，就回到刷</div>
+  </section>
+
+  <!-- 我发过的 -->
+  <section class="hv" id="hvMine">
+    <div class="hw">
+      <header class="hh">
+        <div><h2>我发过的</h2><p>只在这台设备上记得 · 别人看不到这个列表</p></div>
+        <button class="hx" id="hmineBack">返回</button>
+      </header>
+      <div class="hlist" id="hmineList"></div>
+    </div>
     <div class="htip">← 浏览器返回，就回到刷</div>
   </section>
 
@@ -3782,7 +3805,7 @@ body::after{content:'';position:fixed;inset:0;pointer-events:none;z-index:9;opac
   (function(){
     const space = $("#holeSpace");
     if (!space) return;
-    const views = { feed: $("#hvFeed"), write: $("#hvWrite"), one: $("#hvOne") };
+    const views = { feed: $("#hvFeed"), write: $("#hvWrite"), one: $("#hvOne"), mine: $("#hvMine") };
     const stage = $("#hstage"), nextBtn = $("#hnext"), seenLabel = $("#hseen");
     const wtext = $("#hwriteText"), sendBtn = $("#hsend"), countEl = $("#hcount");
     const thumb = $("#hthumb"), thumbImg = $("#hthumbImg"), fileInput = $("#hfile");
@@ -3893,6 +3916,60 @@ body::after{content:'';position:fixed;inset:0;pointer-events:none;z-index:9;opac
       paint();
     }
 
+
+
+    /* 我发过的 */
+    async function renderMine(){
+      const box = $("#hmineList");
+      if (!box) return;
+      const list = loadMine().slice().reverse();
+      box.textContent = "";
+      if (!list.length) {
+        const e = document.createElement("div");
+        e.className = "hempty";
+        e.textContent = "这台设备还没发过。发一条试试？";
+        box.appendChild(e);
+        return;
+      }
+      let shown = 0;
+      for (const item of list.slice(0, 20)) {
+        try {
+          const j = await api("/api/hole/" + item.id);
+          const n = (j.replies || []).length;
+          const row = document.createElement("div");
+          row.className = "hrow2";
+          const p = document.createElement("p");
+          p.textContent = j.b || "（只有一张图）";
+          const m = document.createElement("div");
+          m.className = "m";
+          const t = document.createElement("span");
+          t.textContent = when(j.at);
+          m.appendChild(t);
+          if (n) {
+            const rn = document.createElement("span");
+            rn.textContent = n + " 条回复";
+            m.appendChild(rn);
+          }
+          if (n > (item.seen || 0)) {
+            const nw = document.createElement("span");
+            nw.className = "new";
+            nw.textContent = "新 " + (n - (item.seen || 0));
+            m.appendChild(nw);
+          }
+          row.appendChild(p);
+          row.appendChild(m);
+          row.addEventListener("click", () => openPost(item.id));
+          box.appendChild(row);
+          shown++;
+        } catch (e) { /* 已经被删了 */ }
+      }
+      if (!shown) {
+        const e = document.createElement("div");
+        e.className = "hempty";
+        e.textContent = "发过的那些都不在了。";
+        box.appendChild(e);
+      }
+    }
 
     /* 本机记住自己发过的帖，有新回复就提示 */
     const MINE_KEY = "hole.mine";
@@ -4114,6 +4191,10 @@ body::after{content:'';position:fixed;inset:0;pointer-events:none;z-index:9;opac
       else say("暂时没有新回复。", null, 2500);
     });
     $("#hnew").addEventListener("click", () => show("write"));
+    const mineOpen = $("#hmineOpen");
+    if (mineOpen) mineOpen.addEventListener("click", () => { show("mine"); renderMine(); });
+    const mineBack = $("#hmineBack");
+    if (mineBack) mineBack.addEventListener("click", () => show("feed"));
     $("#hwriteCancel").addEventListener("click", () => show("feed"));
     $("#hback").addEventListener("click", () => { openId = ""; show("feed"); });
     document.querySelectorAll("[data-hclose]").forEach((b) => b.addEventListener("click", () => {
