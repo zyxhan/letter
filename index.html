@@ -941,6 +941,18 @@ header #btnDrawer:active{transform:scale(.97)}
 body.holeMode #drawerHint,
 body.holeMode header #btnDrawer{display:none!important}
 </style>
+
+<style>
+/* 手机上的小修 */
+@media (max-width: 640px){
+  /* 抽屉拉开时，顶栏那几颗会挤在右边的缝里，藏起来 */
+  body.open header{opacity:0; pointer-events:none; transition:opacity .18s ease}
+  /* 树洞底部那行提示会被"说点什么"按钮压住，窄屏直接不显示 */
+  .htip{display:none!important}
+  /* 悬浮按钮稍微抬高，别贴着手势条 */
+  .hfab{bottom:max(34px, env(safe-area-inset-bottom))}
+}
+</style>
 </head>
 <body>
 <div id="light" aria-hidden="true"></div>
@@ -3915,15 +3927,17 @@ body::after{content:'';position:fixed;inset:0;pointer-events:none;z-index:9;opac
       sendBtn.disabled = true; sendBtn.textContent = "发送中…";
       const keepImg = imgData;
       try {
-        await api("/api/hole", {
+        const res = await api("/api/hole", {
           method: "POST", headers: { "content-type": "application/json" },
           body: JSON.stringify({ b: text, img: imgData || "" })
         });
         wtext.value = ""; clearImg(); updateCount();
         show("feed");
-        // 自己刚发的，先摆上来
+        // 自己刚发的：直接摆上来，并且记进 seen（以后随机也不会再推给自己、不占名额）
+        const realId = (res && res.id) || "";
+        if (realId) seen.add(realId);
         stage.textContent = "";
-        const mine = bigCard({ id: "mine-" + Date.now(), b: text, at: Date.now(), img: keepImg ? 1 : 0, n: 0 });
+        const mine = bigCard({ id: realId || ("mine-" + Date.now()), b: text, at: Date.now(), img: keepImg ? 1 : 0, n: 0 });
         stage.appendChild(mine);
         paint();
         say("发出去了。", null, 2600);
