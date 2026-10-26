@@ -1082,6 +1082,15 @@ body.holeMode header #btnDrawer{display:none!important}
         <button class="chip" id="btnRestore">恢复备份</button>
       </div>
       <p class="hint">导出时会弹出「另存为」，可以直接挑桌面；挑过一次，下次还会从那儿开始。浏览器不支持的话，会退回下载文件夹。</p>
+
+      <div id="addrNote" style="margin-top:14px;padding-top:12px;border-top:1px dashed var(--line)">
+        <p class="hint" style="margin:0 0 6px">这个网站有两个地址，有些网络打不开其中一个：</p>
+        <div class="row" style="gap:6px;flex-wrap:wrap">
+          <button class="chip" id="addrMain">复制新地址</button>
+          <button class="chip" id="addrOld">复制旧地址</button>
+        </div>
+        <p class="hint" id="addrTip" style="margin:8px 0 0">新：zyxhan.github.io/letter/ · 旧：letter.lianlang.top</p>
+      </div>
     </div>
 
     <div class="sect">
@@ -4016,6 +4025,37 @@ body::after{content:'';position:fixed;inset:0;pointer-events:none;z-index:9;opac
         else enterHole();
       } else if (space.classList.contains("on")) leaveHole();
     });
+  })();
+
+
+  /* 两个地址，一键复制 */
+  (function(){
+    const HOSTED_OLD = "https://letter.lianlang.top/";
+    const HOSTED_NEW = "https://zyxhan.github.io/letter/";
+    const tip = document.getElementById("addrTip");
+    function copy(text, btn, label){
+      const done = () => {
+        if (tip) tip.textContent = "复制好了：" + text;
+        const old = btn.textContent;
+        btn.textContent = "已复制";
+        setTimeout(() => { btn.textContent = old; if (tip) tip.textContent = label; }, 1600);
+      };
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(text).then(done, () => { fallbackCopy(text); done(); });
+      } else { fallbackCopy(text); done(); }
+    }
+    function fallbackCopy(text){
+      const t = document.createElement("textarea");
+      t.value = text; t.style.position = "fixed"; t.style.opacity = "0";
+      document.body.appendChild(t); t.select();
+      try { document.execCommand("copy"); } catch (e) {}
+      document.body.removeChild(t);
+    }
+    const MAIN = "新：zyxhan.github.io/letter/ · 旧：letter.lianlang.top";
+    const b1 = document.getElementById("addrMain");
+    const b2 = document.getElementById("addrOld");
+    if (b1) b1.addEventListener("click", () => copy(HOSTED_NEW, b1, MAIN));
+    if (b2) b2.addEventListener("click", () => copy(HOSTED_OLD, b2, MAIN));
   })();
 
   /* 打开别人发来的链接：旧域名打不开也没关系，取 # 后面的部分，换到现在的地址读 */
