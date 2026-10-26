@@ -990,7 +990,6 @@ body.holeMode header #btnDrawer{display:none!important}
   <input id="title" placeholder="无题" spellcheck="false">
   <span class="spacer"></span>
   <button id="btnTidy" title="收拾标点和空行">收拾</button>
-  <button id="btnLetterTop" title="导成信，给某个具体的人看">导成信</button>
   <button id="btnRead" title="阅读模式 (Ctrl+E)">阅读</button>
   <button id="btnHole" title="树洞：匿名说点什么">树洞</button>
 </header>
@@ -1073,7 +1072,7 @@ body.holeMode header #btnDrawer{display:none!important}
         <button class="chip" id="btnPost">寄出去</button>
         <button class="chip" id="btnBox" style="display:none">收信箱</button>
         <button class="chip" id="btnOpenLink">打开链接</button>
-        <button class="chip" id="btnLetter">导出 .html</button>
+        <button class="chip" id="btnLetter" title="导成一封信，对方双击就能拆">导成信</button>
         <button class="chip" id="btnDelete">先放回收站</button>
       </div>
       <div class="row">
@@ -1994,7 +1993,6 @@ body::after{content:'';position:fixed;inset:0;pointer-events:none;z-index:9;opac
     setTimeout(() => $("#lTo").focus(), 50);
   }
   $("#btnLetter").onclick = openLetter;
-  $("#btnLetterTop").onclick = openLetter;
   $("#lCancel").onclick = () => el.letterDlg.close();
   $("#lMake").onclick = async () => {
     state.letter.to = $("#lTo").value.trim();
